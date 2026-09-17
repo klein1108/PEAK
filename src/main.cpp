@@ -57,6 +57,10 @@
 #define CHARACTER_CLOTHES 5
 #define CHARACTER_HAT 6
 
+#define GROUND_DEFAULT_SX 200.0f
+#define GROUND_DEFAULT_SY 1.0f
+#define GROUND_DEFAULT_SZ 200.0f
+
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
 struct ObjModel
@@ -395,8 +399,8 @@ int main(int argc, char *argv[])
 
         // Note que, no sistema de coordenadas da câmera, os planos near e far
         // estão no sentido negativo! Veja slides 176-204 do documento Aula_09_Projecoes.pdf.
-        float nearplane = -0.1f; // Posição do "near plane"
-        float farplane = -10.0f; // Posição do "far plane"
+        float nearplane = -0.1f;  // Posição do "near plane"
+        float farplane = -500.0f; // Posição do "far plane"
 
         if (g_UsePerspectiveProjection)
         {
@@ -427,23 +431,22 @@ int main(int argc, char *argv[])
         glUniformMatrix4fv(g_view_uniform, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(g_projection_uniform, 1, GL_FALSE, glm::value_ptr(projection));
 
-        // Desenhamos o modelo da esfera
-        model = Matrix_Translate(-1.0f, 0.0f, 0.0f) * Matrix_Rotate_Z(0.6f) * Matrix_Rotate_X(0.2f) * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f);
-        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(g_object_id_uniform, SPHERE);
-        DrawVirtualObject("the_sphere");
-
-        // Desenhamos o modelo do coelho
-        model = Matrix_Translate(1.0f, 0.0f, 0.0f) * Matrix_Rotate_X(g_AngleX + (float)glfwGetTime() * 0.1f);
-        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(g_object_id_uniform, BUNNY);
-        DrawVirtualObject("the_bunny");
-
         // Desenhamos o plano do chão
-        model = Matrix_Translate(0.0f, -1.1f, 0.0f);
-        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+        glm::mat4 modelground = Matrix_Translate(0.0f, 0.0f, 0.0f) * Matrix_Scale(
+                                                                         GROUND_DEFAULT_SX,
+                                                                         GROUND_DEFAULT_SY,
+                                                                         GROUND_DEFAULT_SZ);
+        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(modelground));
         glUniform1i(g_object_id_uniform, PLANE);
         DrawVirtualObject("the_plane");
+
+        // Criamos uma nova matriz para o personagem (sem a escala gigante do chão)
+        // Se o chão estiver em Y = 0.0f, você pode precisar subir o personagem um pouco no eixo Y
+        // para ele não ficar enterrado pela metade (ex: Matrix_Translate(0.0f, 1.0f, 0.0f))
+        glm::mat4 model_character = Matrix_Translate(0.0f, 0.0f, 0.0f) * Matrix_Scale(1.0f, 1.0f, 1.0f);
+
+        // Enviamos a nova matriz do personagem para substituir a matriz do chão na GPU
+        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model_character));
 
         // DESENHANDO PARTES DO PERSONAGEM
         glUniform1i(g_object_id_uniform, CHARACTER_BODY);
