@@ -22,6 +22,10 @@ uniform mat4 projection;
 #define SPHERE 0
 #define BUNNY  1
 #define PLANE  2
+#define CHARACTER_BODY 3
+#define CHARACTER_HEAD 4
+#define CHARACTER_CLOTHES 5
+#define CHARACTER_HAT 6
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -32,6 +36,8 @@ uniform vec4 bbox_max;
 uniform sampler2D TextureImage0;
 uniform sampler2D TextureImage1;
 uniform sampler2D TextureImage2;
+uniform sampler2D TextureImage3;
+uniform sampler2D TextureImage4;
 
 // O valor de saída ("out") de um Fragment Shader é a cor final do fragmento.
 out vec4 color;
@@ -133,6 +139,27 @@ void main()
 
 		// Obtemos a refletância difusa a partir da leitura da imagem TextureImage1
 		Kd0 = texture(TextureImage1, vec2(U,V)).rgb;
+    }  else if ( object_id == CHARACTER_BODY ) {
+        // Coordenadas de textura do personagem, obtidas do arquivo OBJ.
+        U = texcoords.x;
+        V = texcoords.y;
+
+        // Obtemos a refletância difusa a partir da leitura da imagem TextureImage2
+        Kd0 = texture(TextureImage2, vec2(U,V)).rgb;
+
+    } else if ( object_id == CHARACTER_HEAD ) {
+        U = texcoords.x;
+        V = texcoords.y;
+        Kd0 = texture(TextureImage4, vec2(U,V)).rgb;
+
+    } else if ( object_id == CHARACTER_CLOTHES ) {
+        U = texcoords.x;
+        V = texcoords.y;
+        Kd0 = texture(TextureImage3, vec2(U,V)).rgb;
+
+    } else if ( object_id == CHARACTER_HAT ) {
+        // Cor branca para o chapéu
+        Kd0 = vec3(1.0, 1.0, 1.0);
     }
 
     // Equação de Iluminação
