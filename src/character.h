@@ -4,12 +4,11 @@
 #include <GLFW/glfw3.h>
 #include <cmath>
 
-#define DASH_MOMENTUM 18.0f
+#define DASH_MOMENTUM 14.0f
 #define GRAVITY -23.0f
 
 class Player
 {
-
 public:
   float posX, posY, posZ;
 
@@ -21,76 +20,113 @@ public:
   float estaminaMaxima;
 
   bool isNoChao;
-  bool isJaDeuImpulsoNoAr;
 
   float impulsoX;
   float impulsoZ;
 
   float gravidade;
   float forcaPulo;
-  float forcaImpulsoDash;
-  float forcaImpulsoPuloCorrendo;
   float alturaChao;
 
   Player(float startX = 0.0f, float startY = 0.0f, float startZ = 0.0f)
       : posX(startX), posY(startY), posZ(startZ),
-        velocidade(0.1f), velocidadeCorrida(0.2f),
+        velocidade(6.0f),
+        velocidadeCorrida(12.0f),
         estamina(100.0f), estaminaMaxima(100.0f),
-        velocidadeY(0.0f), isNoChao(true), isJaDeuImpulsoNoAr(false),
+        velocidadeY(0.0f), isNoChao(true),
         impulsoX(0.0f), impulsoZ(0.0f),
         gravidade(GRAVITY), forcaPulo(10.0f),
-        forcaImpulsoDash(DASH_MOMENTUM),
-        forcaImpulsoPuloCorrendo(6.5f),
         alturaChao(0.0f)
   {
   }
 
-  void mover(float dx, float dz)
-  {
-    posX += dx;
-    posZ += dz;
-  }
-
-  void pular(GLFWwindow *window, float cameraTheta)
+  void pular(float dirX, float dirZ, float velocidadeAtual)
   {
     if (isNoChao)
     {
-      bool isCorrendo = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && estamina > 0.0f);
-
       velocidadeY = forcaPulo;
       isNoChao = false;
 
-      // Pula apenas para cima - sem impulso horizontal
-      impulsoX = 0.0f;
-      impulsoZ = 0.0f;
+      float mag = sqrt(dirX * dirX + dirZ * dirZ);
+      if (mag > 0.0001f)
+      {
+        // Normaliza a direção do movimento
+        dirX /= mag;
+        dirZ /= mag;
+
+        // O impulso horizontal no ar mantém a velocidade atual do movimento
+        impulsoX = dirX * velocidadeAtual;
+        impulsoZ = dirZ * velocidadeAtual;
+      }
+      else
+      {
+        // Parado: pulo estático (vertical puro)
+        impulsoX = 0.0f;
+        impulsoZ = 0.0f;
+      }
     }
   }
 
   void atualizarFisica(float deltaT)
   {
+    // Gravidade e movimento vertical
     velocidadeY += gravidade * deltaT;
     posY += velocidadeY * deltaT;
 
-    posX += impulsoX * deltaT;
-    posZ += impulsoZ * deltaT;
+    // Movimento horizontal durantes o pulo
+    if (!isNoChao)
+    {
+      posX += impulsoX * deltaT;
+      posZ += impulsoZ * deltaT;
+    }
 
+    // Colisão com o chão
     if (posY <= alturaChao)
     {
       posY = alturaChao;
       velocidadeY = 0.0f;
       isNoChao = true;
-      isJaDeuImpulsoNoAr = false;
+
+      // Zera os impulsos horizontais ao tocar o chão para evitar deslizamentos
+      impulsoX = 0.0f;
+      impulsoZ = 0.0f;
     }
   }
 
   void processaInput(GLFWwindow *window, float cameraTheta, float deltaT)
   {
+    // Calcula a direção desejada baseada na rotação da câmera
+    float frenteX = sin(cameraTheta);
+    float frenteZ = -cos(cameraTheta);
+    float direitaX = cos(cameraTheta);
+    float direitaZ = sin(cameraTheta);
 
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+    float dirX = 0.0f;
+    float dirZ = 0.0f;
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-      pular(window, cameraTheta);
+      dirX += frenteX;
+      dirZ += frenteZ;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+      dirX -= frenteX;
+      dirZ -= frenteZ;
     }
 
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+      dirX -= direitaX;
+      dirZ -= direitaZ;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+      dirX += direitaX;
+      dirZ += direitaZ;
+    }
+
+    // Determina a velocidade atual (andando ou correndo)
     float velocidadeAtual = velocidade;
     if (isNoChao && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && estamina > 0.0f)
     {
@@ -100,29 +136,23 @@ public:
         estamina = 0.0f;
     }
 
+    // Executa o Pulo se a tecla ESPAÇO for pressionada
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && isNoChao)
+    {
+      pular(dirX, dirZ, velocidadeAtual);
+    }
+
+    // Movimentação no chão (normalizada e multiplicada por deltaT)
     if (isNoChao)
     {
-      float frenteX = sin(cameraTheta);
-      float frenteZ = -cos(cameraTheta);
-      float direitaX = cos(cameraTheta);
-      float direitaZ = sin(cameraTheta);
+      float mag = sqrt(dirX * dirX + dirZ * dirZ);
+      if (mag > 0.0001f)
+      {
+        dirX /= mag;
+        dirZ /= mag;
 
-      if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-      {
-        mover(frenteX * velocidadeAtual, frenteZ * velocidadeAtual);
-      }
-      else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-      {
-        mover(-frenteX * velocidadeAtual, -frenteZ * velocidadeAtual);
-      }
-
-      if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-      {
-        mover(-direitaX * velocidadeAtual, -direitaZ * velocidadeAtual);
-      }
-      else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-      {
-        mover(direitaX * velocidadeAtual, direitaZ * velocidadeAtual);
+        posX += dirX * velocidadeAtual * deltaT;
+        posZ += dirZ * velocidadeAtual * deltaT;
       }
     }
   }

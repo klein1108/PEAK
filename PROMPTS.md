@@ -361,3 +361,497 @@ ___
 
 # Prompt 2
 
+No momento ele esta so pulando, quero que ele pule para a direcao que eu estiver me movimentando quando pular (ou no mesmo lugar se parado). <br><br>
+Considere meu codigo:
+
+
+```C++
+#ifndef CHARACTER_H
+
+#define CHARACTER_H
+
+
+
+#include <GLFW/glfw3.h>
+
+#include <cmath>
+
+
+
+#define DASH_MOMENTUM 18.0f
+
+#define GRAVITY -23.0f
+
+
+
+class Player
+
+{
+
+
+
+public:
+
+  float posX, posY, posZ;
+
+
+
+  float velocidade;
+
+  float velocidadeCorrida;
+
+  float velocidadeY;
+
+
+
+  float estamina;
+
+  float estaminaMaxima;
+
+
+
+  bool isNoChao;
+
+  bool isJaDeuImpulsoNoAr;
+
+
+
+  float impulsoX;
+
+  float impulsoZ;
+
+
+
+  float gravidade;
+
+  float forcaPulo;
+
+  float forcaImpulsoDash;
+
+  float forcaImpulsoPuloCorrendo;
+
+  float alturaChao;
+
+
+
+  Player(float startX = 0.0f, float startY = 0.0f, float startZ = 0.0f)
+
+      : posX(startX), posY(startY), posZ(startZ),
+
+        velocidade(0.1f), velocidadeCorrida(0.2f),
+
+        estamina(100.0f), estaminaMaxima(100.0f),
+
+        velocidadeY(0.0f), isNoChao(true), isJaDeuImpulsoNoAr(false),
+
+        impulsoX(0.0f), impulsoZ(0.0f),
+
+        gravidade(GRAVITY), forcaPulo(10.0f),
+
+        forcaImpulsoDash(DASH_MOMENTUM),
+
+        forcaImpulsoPuloCorrendo(6.5f),
+
+        alturaChao(0.0f)
+
+  {
+
+  }
+
+
+
+  void mover(float dx, float dz)
+
+  {
+
+    posX += dx;
+
+    posZ += dz;
+
+  }
+
+
+
+  void pular(GLFWwindow *window, float cameraTheta)
+
+  {
+
+    if (isNoChao)
+
+    {
+
+      bool isCorrendo = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && estamina > 0.0f);
+
+
+
+      velocidadeY = forcaPulo;
+
+      isNoChao = false;
+
+
+
+      // Calcula direção baseada nas teclas pressionadas (igual ao processaInput)
+
+      float frenteX = sin(cameraTheta);
+
+      float frenteZ = -cos(cameraTheta);
+
+      float direitaX = cos(cameraTheta);
+
+      float direitaZ = sin(cameraTheta);
+
+
+
+      float dirX = 0.0f;
+
+      float dirZ = 0.0f;
+
+
+
+      if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+
+      {
+
+        dirX += frenteX;
+
+        dirZ += frenteZ;
+
+      }
+
+      else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+
+      {
+
+        dirX -= frenteX;
+
+        dirZ -= frenteZ;
+
+      }
+
+
+
+      if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+
+      {
+
+        dirX -= direitaX;
+
+        dirZ -= direitaZ;
+
+      }
+
+      else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+
+      {
+
+        dirX += direitaX;
+
+        dirZ += direitaZ;
+
+      }
+
+
+
+      // Normaliza (importante pro caso de diagonal, tipo W+D)
+
+      float mag = sqrt(dirX * dirX + dirZ * dirZ);
+
+      if (mag > 0.0001f)
+
+      {
+
+        dirX /= mag;
+
+        dirZ /= mag;
+
+
+
+        float forcaImpulso = isCorrendo ? forcaImpulsoDash : forcaImpulsoPuloCorrendo;
+
+
+
+        impulsoX = dirX * forcaImpulso;
+
+        impulsoZ = dirZ * forcaImpulso;
+
+      }
+
+      else
+
+      {
+
+        // Parado: pulo vertical puro, sem impulso horizontal
+
+        impulsoX = 0.0f;
+
+        impulsoZ = 0.0f;
+
+      }
+
+    }
+
+  }
+
+
+
+  void atualizarFisica(float deltaT)
+
+  {
+
+    velocidadeY += gravidade * deltaT;
+
+    posY += velocidadeY * deltaT;
+
+
+
+    posX += impulsoX * deltaT;
+
+    posZ += impulsoZ * deltaT;
+
+
+
+    if (posY <= alturaChao)
+
+    {
+
+      posY = alturaChao;
+
+      velocidadeY = 0.0f;
+
+      isNoChao = true;
+
+      isJaDeuImpulsoNoAr = false;
+
+    }
+
+  }
+
+
+
+  void processaInput(GLFWwindow *window, float cameraTheta, float deltaT)
+
+  {
+
+
+
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+
+    {
+
+      pular(window, cameraTheta);
+
+    }
+
+
+
+    float velocidadeAtual = velocidade;
+
+    if (isNoChao && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && estamina > 0.0f)
+
+    {
+
+      velocidadeAtual = velocidadeCorrida;
+
+      estamina -= 20.0f * deltaT;
+
+      if (estamina < 0.0f)
+
+        estamina = 0.0f;
+
+    }
+
+
+
+    if (isNoChao)
+
+    {
+
+      float frenteX = sin(cameraTheta);
+
+      float frenteZ = -cos(cameraTheta);
+
+      float direitaX = cos(cameraTheta);
+
+      float direitaZ = sin(cameraTheta);
+
+
+
+      if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+
+      {
+
+        mover(frenteX * velocidadeAtual, frenteZ * velocidadeAtual);
+
+      }
+
+      else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+
+      {
+
+        mover(-frenteX * velocidadeAtual, -frenteZ * velocidadeAtual);
+
+      }
+
+
+
+      if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+
+      {
+
+        mover(-direitaX * velocidadeAtual, -direitaZ * velocidadeAtual);
+
+      }
+
+      else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+
+      {
+
+        mover(direitaX * velocidadeAtual, direitaZ * velocidadeAtual);
+
+      }
+
+    }
+
+  }
+
+};
+```
+
+
+#endif // CHARACTER_H
+
+
+
+O motivo principal do seu personagem parecer estar "só pulando no mesmo lugar" ocorre devido a dois problemas no gerenciamento de movimentação e no deltaT:
+
+### Incompatibilidade do deltaT (Chão vs. Ar):
+- No chão (processaInput), a função mover() adicionava a velocidade diretamente sem multiplicar por deltaT (posX += dx). Se seu jogo rodava a 60 FPS, o personagem andava $0.1 \times 60 = 6.0$ unidades/segundo.
+- No ar (atualizarFisica), você aplicava impulsoX * deltaT. Se a força do pulo era $6.5$, a velocidade no ar ficava $6.5 \times 0.016 = 0.10$ por frame. Em taxas de quadros mais altas (ex: 120 FPS+), o movimento no ar ficava microscópico comparado ao movimento do chão, dando a sensação de que ele pulava parado.
+
+### Impulso não era zerado ao pousar:
+- Em atualizarFisica(), quando o personagem tocava o chão, impulsoX e impulsoZ não eram redefinidos para 0.0f, fazendo o personagem deslizar indefinidamente no chão após pousar.
+
+### Movimentação na diagonal no chão:
+- No chão, ao apertar W + D, a função mover era chamada duas vezes seguidas, fazendo o personagem andar mais rápido na diagonal do que em linha reta.
+
+```C++
+Player(float startX = 0.0f, float startY = 0.0f, float startZ = 0.0f)
+    : posX(startX), posY(startY), posZ(startZ),
+      velocidade(6.0f),          // Alterado de 0.1f para 6.0f (unidades/s)
+      velocidadeCorrida(12.0f),  // Alterado de 0.2f para 12.0f (unidades/s)
+      estamina(100.0f), estaminaMaxima(100.0f),
+      velocidadeY(0.0f), isNoChao(true),
+      impulsoX(0.0f), impulsoZ(0.0f),
+      gravidade(GRAVITY), forcaPulo(10.0f),
+      alturaChao(0.0f)
+{
+}```
+
+2. Método pular() (Simplificação e conservação de momento)
+Agora recebe a direção e a velocidade atual pré-calculadas em vez de processar o teclado novamente:
+
+```C++
+void pular(float dirX, float dirZ, float velocidadeAtual)
+{
+    if (isNoChao)
+    {
+        velocidadeY = forcaPulo;
+        isNoChao = false;
+
+        float mag = sqrt(dirX * dirX + dirZ * dirZ);
+        if (mag > 0.0001f)
+        {
+            dirX /= mag;
+            dirZ /= mag;
+
+            // Define o impulso no ar com base na velocidade que ele já estava (andando ou correndo)
+            impulsoX = dirX * velocidadeAtual;
+            impulsoZ = dirZ * velocidadeAtual;
+        }
+        else
+        {
+            // Parado: pulo estático
+            impulsoX = 0.0f;
+            impulsoZ = 0.0f;
+        }
+    }
+}
+```
+
+3. Método atualizarFisica() (Reset do impulso ao pousar)
+Adicionada a limpeza do impulso ao tocar o chão para impedir que o personagem deslize infinitamente:
+
+```C++
+void atualizarFisica(float deltaT)
+{
+    velocidadeY += gravidade * deltaT;
+    posY += velocidadeY * deltaT;
+
+    // Atualiza posição no ar
+    if (!isNoChao)
+    {
+        posX += impulsoX * deltaT;
+        posZ += impulsoZ * deltaT;
+    }
+
+    // Colisão com o chão
+    if (posY <= alturaChao)
+    {
+        posY = alturaChao;
+        velocidadeY = 0.0f;
+        isNoChao = true;
+
+        // NOVO: Zera o impulso ao tocar o chão
+        impulsoX = 0.0f;
+        impulsoZ = 0.0f;
+    }
+}
+```
+
+4. Método processaInput() (Cálculo unificado e multiplicação por deltaT)
+A direção é calculada uma única vez, a movimentação na diagonal é normalizada e o movimento no chão agora usa deltaT:
+
+```C++
+void processaInput(GLFWwindow *window, float cameraTheta, float deltaT)
+{
+    // 1. Vetores de direção calculados uma vez no início
+    float frenteX = sin(cameraTheta), frenteZ = -cos(cameraTheta);
+    float direitaX = cos(cameraTheta), direitaZ = sin(cameraTheta);
+
+    float dirX = 0.0f, dirZ = 0.0f;
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) { dirX += frenteX; dirZ += frenteZ; }
+    else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) { dirX -= frenteX; dirZ -= frenteZ; }
+
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) { dirX -= direitaX; dirZ -= direitaZ; }
+    else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) { dirX += direitaX; dirZ += direitaZ; }
+
+    // 2. Velocidade atual
+    float velocidadeAtual = velocidade;
+    if (isNoChao && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && estamina > 0.0f)
+    {
+        velocidadeAtual = velocidadeCorrida;
+        estamina -= 20.0f * deltaT;
+        if (estamina < 0.0f) estamina = 0.0f;
+    }
+
+    // 3. Pulo repassando direção e velocidade
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && isNoChao)
+    {
+        pular(dirX, dirZ, velocidadeAtual);
+    }
+
+    // 4. Movimento no chão normalizado e com deltaT
+    if (isNoChao)
+    {
+        float mag = sqrt(dirX * dirX + dirZ * dirZ);
+        if (mag > 0.0001f)
+        {
+            dirX /= mag;
+            dirZ /= mag;
+
+            posX += dirX * velocidadeAtual * deltaT;
+            posZ += dirZ * velocidadeAtual * deltaT;
+        }
+    }
+```
