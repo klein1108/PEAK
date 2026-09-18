@@ -49,6 +49,8 @@
 #include "utils.h"
 #include "matrices.h"
 
+#include "character.h"
+
 #define SPHERE 0
 #define BUNNY 1
 #define PLANE 2
@@ -236,6 +238,10 @@ GLint g_bbox_max_uniform;
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
 
+Player player;
+
+float tempoAnterior = (float)glfwGetTime();
+
 int main(int argc, char *argv[])
 {
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
@@ -264,8 +270,19 @@ int main(int argc, char *argv[])
 
     // Criamos uma janela do sistema operacional, com 800 colunas e 600 linhas
     // de pixels, e com título "INF01047 ...".
-    GLFWwindow *window;
-    window = glfwCreateWindow(800, 600, "INF01047 - Seu Cartao - Seu Nome", NULL, NULL);
+
+    // PEGA MONITOR PRINCIPAL
+    GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+
+    // DESCOBRE RESOLUCAO DA TELA
+    const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+
+    // APLICA FULLSCREEN NA TELA
+    GLFWwindow *window = glfwCreateWindow(mode->width, mode->height, "INF01047 - 586981 - Lucas Klein", monitor, NULL);
+
+    // ESCONDE O CURSOR DO MOUSE E PRENDE ELE DENTRO DA JANELA DO JOGO
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
     if (!window)
     {
         glfwTerminate();
@@ -356,6 +373,15 @@ int main(int argc, char *argv[])
     // Ficamos em um loop infinito, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
     {
+
+        // CALCULA DELTA TIME
+        float tempoAtual = (float)glfwGetTime();
+        float deltaT = tempoAtual - tempoAnterior;
+        tempoAnterior = tempoAtual;
+
+        player.processaInput(window, g_CameraTheta, deltaT);
+        // player.atualizarisica(delta_t);
+
         // Aqui executamos as operações de renderização
 
         // Definimos a cor do "fundo" do framebuffer como branco.  Tal cor é
@@ -443,12 +469,9 @@ int main(int argc, char *argv[])
         // Criamos uma nova matriz para o personagem (sem a escala gigante do chão)
         // Se o chão estiver em Y = 0.0f, você pode precisar subir o personagem um pouco no eixo Y
         // para ele não ficar enterrado pela metade (ex: Matrix_Translate(0.0f, 1.0f, 0.0f))
-        glm::mat4 model_character = Matrix_Translate(0.0f, 0.0f, 0.0f) * Matrix_Scale(1.0f, 1.0f, 1.0f);
+        glm::mat4 model_personagem = Matrix_Translate(player.posX, player.posY, player.posZ);
+        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model_personagem));
 
-        // Enviamos a nova matriz do personagem para substituir a matriz do chão na GPU
-        glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model_character));
-
-        // DESENHANDO PARTES DO PERSONAGEM
         glUniform1i(g_object_id_uniform, CHARACTER_BODY);
         DrawVirtualObject("the_peakchar_body");
 
