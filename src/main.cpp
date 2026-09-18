@@ -380,7 +380,7 @@ int main(int argc, char *argv[])
         tempoAnterior = tempoAtual;
 
         player.processaInput(window, g_CameraTheta, deltaT);
-        // player.atualizarisica(delta_t);
+        player.atualizarFisica(deltaT);
 
         // Aqui executamos as operações de renderização
 

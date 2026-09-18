@@ -32,12 +32,6 @@ public:
   float forcaImpulsoPuloCorrendo;
   float alturaChao;
 
-  void mover(float dx, float dz)
-  {
-    posX += dx;
-    posZ += dz;
-  }
-
   Player(float startX = 0.0f, float startY = 0.0f, float startZ = 0.0f)
       : posX(startX), posY(startY), posZ(startZ),
         velocidade(0.1f), velocidadeCorrida(0.2f),
@@ -51,8 +45,52 @@ public:
   {
   }
 
+  void mover(float dx, float dz)
+  {
+    posX += dx;
+    posZ += dz;
+  }
+
+  void pular(GLFWwindow *window, float cameraTheta)
+  {
+    if (isNoChao)
+    {
+      bool isCorrendo = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && estamina > 0.0f);
+
+      velocidadeY = forcaPulo;
+      isNoChao = false;
+
+      // Pula apenas para cima - sem impulso horizontal
+      impulsoX = 0.0f;
+      impulsoZ = 0.0f;
+    }
+  }
+
+  void atualizarFisica(float deltaT)
+  {
+    velocidadeY += gravidade * deltaT;
+    posY += velocidadeY * deltaT;
+
+    posX += impulsoX * deltaT;
+    posZ += impulsoZ * deltaT;
+
+    if (posY <= alturaChao)
+    {
+      posY = alturaChao;
+      velocidadeY = 0.0f;
+      isNoChao = true;
+      isJaDeuImpulsoNoAr = false;
+    }
+  }
+
   void processaInput(GLFWwindow *window, float cameraTheta, float deltaT)
   {
+
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+    {
+      pular(window, cameraTheta);
+    }
+
     float velocidadeAtual = velocidade;
     if (isNoChao && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && estamina > 0.0f)
     {
@@ -65,17 +103,17 @@ public:
     if (isNoChao)
     {
       float frenteX = sin(cameraTheta);
-      float frenteZ = cos(cameraTheta);
+      float frenteZ = -cos(cameraTheta);
       float direitaX = cos(cameraTheta);
-      float direitaZ = -sin(cameraTheta);
+      float direitaZ = sin(cameraTheta);
 
       if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
       {
-        mover(-frenteX * velocidadeAtual, -frenteZ * velocidadeAtual);
+        mover(frenteX * velocidadeAtual, frenteZ * velocidadeAtual);
       }
       else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
       {
-        mover(frenteX * velocidadeAtual, frenteZ * velocidadeAtual);
+        mover(-frenteX * velocidadeAtual, -frenteZ * velocidadeAtual);
       }
 
       if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
