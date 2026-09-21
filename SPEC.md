@@ -5,8 +5,8 @@
 - **Aluno 1 - Nome**: Lucas Rossi Klein
 - **Aluno 1 - Cartão UFRGS**: 586981
 
-- **Aluno 2 - Nome**: <mark>`<preencher>`</mark>
-- **Aluno 2 - Cartão UFRGS**: <mark>`<preencher>`</mark>
+- **Aluno 2 - Nome**: André Torquato Pedreira
+- **Aluno 2 - Cartão UFRGS**: 600986 
 
 ## Detalhes do que será implementado
 
@@ -17,31 +17,11 @@ O projeto consiste na re-implementação do jogo PEAK, que é um jogo de escalad
 ## Especificação visual
 
 ### Vídeo - Link
-
-> [!IMPORTANT]
-> - Coloque aqui um link para um vídeo que mostre a aplicação gráfica
->   de referência que você vai implementar. **Sua implementação deverá
->   ser o mais parecido possível com o que é mostrado no vídeo (mais
->   detalhes abaixo).**
-> - **Você não pode escolher como referência: (1) algum trabalho realizado
->   por outros alunos desta disciplina, em semestres anteriores. (2) Minecraft.**
-> - Por exemplo, você pode colocar um vídeo de um jogo que você gosta,
->   e seu trabalho final será uma re-implementação do jogo.
-> - O vídeo pode ser um link para YouTube, Google Drive, ou arquivo mp4 dentro
->   do próprio repositório. Mas, garanta que qualquer um tenha
->   permissão de acesso ao vídeo através deste link.
-
-<mark>`<preencher>`</mark>
+https://drive.google.com/file/d/1zBXzbzcNcBtvnMKIn-JOcTQs8mJrp0rK/view?usp=sharing
 
 ### Vídeo - Timestamp
-
-> [!IMPORTANT]
-> - Coloque aqui um **intervalo de ~30 segundos** do vídeo acima, que
->   será a base de comparação para avaliar se o seu trabalho final
->   conseguiu ou não reproduzir a referência.
-
-- **Timestamp inicial**: <mark>`<preencher>`</mark>
-- **Timestamp final**: <mark>`<preencher>`</mark>
+- **Timestamp inicial**: 19:00
+- **Timestamp final**: 19:30
 
 ### Imagens
 
