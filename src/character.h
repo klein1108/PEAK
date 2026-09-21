@@ -30,7 +30,7 @@ public:
 
   Player(float startX = 0.0f, float startY = 0.0f, float startZ = 0.0f)
       : posX(startX), posY(startY), posZ(startZ),
-        velocidade(6.0f),
+        velocidade(8.0f),
         velocidadeCorrida(12.0f),
         estamina(100.0f), estaminaMaxima(100.0f),
         velocidadeY(0.0f), isNoChao(true),
@@ -106,24 +106,24 @@ public:
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-      dirX += frenteX;
-      dirZ += frenteZ;
+      dirX -= frenteX;
+      dirZ -= frenteZ;
     }
     else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-      dirX -= frenteX;
-      dirZ -= frenteZ;
+      dirX += frenteX;
+      dirZ += frenteZ;
     }
 
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
-      dirX -= direitaX;
-      dirZ -= direitaZ;
+      dirX += direitaX;
+      dirZ += direitaZ;
     }
     else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
-      dirX += direitaX;
-      dirZ += direitaZ;
+      dirX -= direitaX;
+      dirZ -= direitaZ;
     }
 
     // Determina a velocidade atual (andando ou correndo)

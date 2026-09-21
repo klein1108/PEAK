@@ -1,26 +1,18 @@
 # Especificação da Implementação
 
-> [!CAUTION]
-> - Você <ins>**não pode utilizar ferramentas de IA para escrever esta
->   especificação**</ins>
-
-> [!WARNING]
-> - Após a entrega da primeira versão completa, esta especificação não
->   poderá ser alterada. A implementação final deverá corresponder ao que
->   estiver descrito neste arquivo.
-
 ## Integrantes da dupla
 
-- **Aluno 1 - Nome**: <mark>`<preencher>`</mark>
-- **Aluno 1 - Cartão UFRGS**: <mark>`<preencher>`</mark>
+- **Aluno 1 - Nome**: Lucas Rossi Klein
+- **Aluno 1 - Cartão UFRGS**: 586981
 
 - **Aluno 2 - Nome**: <mark>`<preencher>`</mark>
 - **Aluno 2 - Cartão UFRGS**: <mark>`<preencher>`</mark>
 
 ## Detalhes do que será implementado
 
-- **Título do trabalho**: <mark>`<preencher>`</mark>
-- **Parágrafo curto descrevendo o que será implementado**: <mark>`<preencher>`</mark>
+- **Título do trabalho**: PEAK
+- **Parágrafo curto descrevendo o que será implementado**: 
+O projeto consiste na re-implementação do jogo PEAK, que é um jogo de escalada no estilo cartoon. A dinamica principal do jogo exige com que o jogador passe por obstáculos utilizando da escalada e movimentação como forma de atingir o objetivo de chegar até o ponto mais alto do cenário.  
 
 ## Especificação visual
 
@@ -83,44 +75,38 @@
 
 ## Especificação textual
 
-Para cada um dos requisitos abaixo (detalhados no [Enunciado do Trabalho final - Moodle](https://moodle.ufrgs.br/mod/assign/view.php?id=6302370)), escreva um parágrafo **curto** explicando como este requisito será atendido, apontando itens específicos do vídeo/imagens que você incluiu acima que atendem estes requisitos.
-
 ### Malhas poligonais complexas
-<mark>`<preencher>`</mark>
+O jogo vai utilizar de modelos 3D para superfícies de escalada e obstáculos, para o personagem do jogador, cenário e objetos. O terreno, arvores mostradas no video foram modeladas atraves de malhas poligonais em 3d.
 
 ### Transformações geométricas controladas pelo usuário
-<mark>`<preencher>`</mark>
+Assim como no video, o jogador vai controlar a movimentação do próprio modelo do personagem, podendo andar, girar e executar ações de forma fluidas pelo cenário.
 
 ### Diferentes tipos de câmeras
-<mark>`<preencher>`</mark>
+O jogador vai poder jogar em primeira pessoa, no formato padrão, ou poderá escolher jogar em terceira pessoa, ambas cameras mostradas no video.
 
 ### Instâncias de objetos
-<mark>`<preencher>`</mark>
+A ambientação de cenários e objetos interagiveis vai fazer uso de múltiplas instancias de mesmos objetos, em situações ou locais diferentes. O modelo das árvores que aparecem no vídeo é um exemplo de mais de uma instância do objeto "árvore".
 
 ### Testes de intersecção
-<mark>`<preencher>`</mark>
+Todo o principio da escalada no jogo se baseia nessa dinâmica. Quando o jogador for subir uma superfície, o jogo exige um contato entre ambos para que a mecânica seja realizada. A mecânica é demonstrada no video. 
 
 ### Modelos de Iluminação em todos os objetos
-<mark>`<preencher>`</mark>
+O jogo, assim como mostrado no video, vai possuir um sistema de iluminação a partir do Sol.
 
 ### Mapeamento de texturas em todos os objetos
-<mark>`<preencher>`</mark>
+Utilizaremos de texturas, no estilo cartoon, disponíveis na internet, corrigindo as coordenadas UV dos modelos para que fiquem corretas e que não pareçam artificialmente esticadas e aplicando nos elementos do jogo.
+ 
 
 ### Movimentação com curva Bézier cúbica
-<mark>`<preencher>`</mark>
+Será realizada as correntes de ar em partículas que seguem caminhos curvos, indicando visualmente ao jogador quando há ventos fortes podendo causar a queda.
 
 ### Animações baseadas no tempo ($\Delta t$)
-<mark>`<preencher>`</mark>
+O movimento de escalada do jogador é um exemplo de implementação desse caso. Será calculado multiplicando a velocidade pelo tempo entre cada quadro, o chamado Delta t, fazendo com que a velocidade o personagem seja constante e uniforme, sem ser afetada pelas variações na taxa de FPS.
 
 ### Funcionalidade extra obrigatória
 
-> [!IMPORTANT]
-> - Descreva a funcionalidade extra relacionada à Computação Gráfica
->   que será implementada.
-> - Esta funcionalidade também deverá ser documentada no arquivo
->   `README.md` da entrega final.
-
-<mark>`<preencher>`</mark>
+- Interface gráfica de stamina e itens carregados 
+- Sprite de itens
 
 ## Limitações esperadas
 
