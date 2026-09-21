@@ -38,20 +38,20 @@ https://drive.google.com/file/d/1zBXzbzcNcBtvnMKIn-JOcTQs8mJrp0rK/view?usp=shari
 #### Imagem 1
 
 - **Representação da escalada dentro do jogo :**
-
-<img width="956" height="547" alt="Captura de tela 2026-09-20 213305" src="https://github.com/user-attachments/assets/926947b9-d5c2-4b52-a2bf-25b8cf0bb743" />
+  
+![Imagem 1](images/spec/image1.jpg)
 
 #### Imagem 2
 
 - **Representação do funcionamento do vento dentro do jogo:**
 
-<img width="958" height="544" alt="image" src="https://github.com/user-attachments/assets/448c2d8c-eca1-43c1-9562-4a5265e68876" />
+![Imagem 2](images/spec/image2.jpg)
 
 #### Imagem 3
 
 - **Representação da alternância de câmera de visão do personagem:**
 
-<img width="951" height="557" alt="Captura de tela 2026-09-20 213514" src="https://github.com/user-attachments/assets/5725a512-c267-4031-b7b7-61652d960cc0" />
+![Imagem 3](images/spec/image3.jpg)
 
 ## Especificação textual
 
