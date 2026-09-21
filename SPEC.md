@@ -37,19 +37,19 @@ https://drive.google.com/file/d/1zBXzbzcNcBtvnMKIn-JOcTQs8mJrp0rK/view?usp=shari
 
 #### Imagem 1
 
-- **Descrição**: <mark>`<preencher>`</mark>
+- **Representação da escalada dentro do jogo :**
 
 ![Imagem 1](images/spec/image1.jpg)
 
 #### Imagem 2
 
-- **Descrição**: <mark>`<preencher>`</mark>
+- **Representação do funcionamento do vento dentro do jogo:**
 
 ![Imagem 2](images/spec/image2.jpg)
 
 #### Imagem 3
 
-- **Descrição**: <mark>`<preencher>`</mark>
+- **Representação da alternância de câmera de visão do personagem:**
 
 ![Imagem 3](images/spec/image3.jpg)
 
@@ -90,11 +90,12 @@ O movimento de escalada do jogador é um exemplo de implementação desse caso. 
 
 ## Limitações esperadas
 
-> [!IMPORTANT]
-> - Coloque aqui uma lista de detalhes visuais ou de interação que
->   aparecem no vídeo e/ou imagens acima, mas que você **não pretende
->   implementar** ou que você **irá implementar parcialmente**.
-> - Para cada item, **explique por que** não será implementado ou por
->   que será implementado parcialmente.
+>   Mútiplos biomas/níveis/fases : Como a criação de múltiplas fases na re-implementação não é necessária para demonstrar a maioria das mecânicas, efeitos gráficos e complexidades inerentes ao jogo original, a decisão de simplificação do número de níveis foi tomada.
 
-<mark>`<preencher>`</mark>
+>   Possibilidade de arremessar itens : Tal ação não se torna necessária quando o jogo é jogado sozinho. Como a re-implementação é single player , tal funcionalidade será descartada.
+
+>   Efeitos prejudiciais à saúde do jogador como : envenenamento , congelamento e fome não serão implementados pois não trazem ganho direto para a demonstração das técnicas de computação gráfica e físicas de escalada, que são o foco central do trabalho.
+
+>   Alguns itens ou objetos do ambiente como : certas pedras específicas , cogumelos e alguns dos vários consumíveis do jogo original não serão implementados pois há uma quantidade e variedade enorme desses elementos , o que torna a sua íntegra implementação algo inviável dentro do contexto do nosso projeto.
+
+> "A Névoa " não será incluída à nossa re-implementação , pois seu objetivo no jogo original é aumentar a dificuldade da gameplay ao limitar o tempo de conclusão de fase do jogador , porém o foco do projeto é mais demonstrativo do que uma real aplicação de um jogo competitivo funcional.
