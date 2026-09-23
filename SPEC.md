@@ -61,6 +61,8 @@ O jogo vai utilizar de modelos 3D para superfícies de escalada e obstáculos, p
 ### Transformações geométricas controladas pelo usuário
 Assim como no video, o jogador vai controlar a movimentação do próprio modelo do personagem, podendo andar, girar e executar ações de forma fluidas pelo cenário.
 
+> Comentário Professor: Implementem as mãos do personagem: elas são essenciais para que o resultado fique próximo da referência visual.
+
 ### Diferentes tipos de câmeras
 O jogador vai poder jogar em primeira pessoa, no formato padrão, ou poderá escolher jogar em terceira pessoa, ambas cameras mostradas no video.
 
@@ -72,6 +74,8 @@ Todo o principio da escalada no jogo se baseia nessa dinâmica. Quando o jogador
 
 ### Modelos de Iluminação em todos os objetos
 O jogo, assim como mostrado no video, vai possuir um sistema de iluminação a partir do Sol.
+
+> Comentário Professor: Vocês descrevem apenas que a iluminação provém do Sol. Especifiquem o modelo de iluminação que aplicarão a todos os objetos.
 
 ### Mapeamento de texturas em todos os objetos
 Utilizaremos de texturas, no estilo cartoon, disponíveis na internet, corrigindo as coordenadas UV dos modelos para que fiquem corretas e que não pareçam artificialmente esticadas e aplicando nos elementos do jogo.
@@ -87,6 +91,8 @@ O movimento de escalada do jogador é um exemplo de implementação desse caso. 
 
 - Interface gráfica de stamina e itens carregados 
 - Sprite de itens
+
+> Comentário Professor: A interface gráfica do jogo é relativamente simples, e não entendi o que vocês querem dizer com os sprites mencionados. Descrevam melhor essas funcionalidades ou escolham outra funcionalidade extra. Sugiro alternativas como sombras e seleção de objetos com o mouse (picking).
 
 ## Limitações esperadas
 
