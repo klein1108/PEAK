@@ -81,7 +81,7 @@ O movimento de escalada do jogador é um exemplo de implementação desse caso. 
 - Sprite de itens (desenhos das figuras dos itens)
 
 A imagem referencia todos os itens que estarão presentes na interface gráfica.
-![alt text](image.png)
+![Imagem 4](images/spec/image4.png)
 
 ## Limitações esperadas
 
