@@ -25,16 +25,6 @@ https://drive.google.com/file/d/1zBXzbzcNcBtvnMKIn-JOcTQs8mJrp0rK/view?usp=shari
 
 ### Imagens
 
-> [!IMPORTANT]
-> - Coloque aqui **três imagens** capturadas do vídeo acima, que você
->   irá usar como ilustração para as explicações que vêm abaixo.
-> - As imagens devem estar armazenadas neste repositório, no diretório
->   `images/spec/`, com os nomes `image1`, `image2` e `image3`.
-> - Cada imagem deve usar o formato `.jpg` ou `.png`. Ajuste a extensão
->   nos vínculos abaixo para que corresponda ao arquivo armazenado.
-> - Escolha imagens que correspondam a momentos do intervalo indicado
->   acima ou que sejam relevantes para a comparação com a implementação.
-
 #### Imagem 1
 
 - **Representação da escalada dentro do jogo :**
@@ -61,6 +51,8 @@ O jogo vai utilizar de modelos 3D para superfícies de escalada e obstáculos, p
 ### Transformações geométricas controladas pelo usuário
 Assim como no video, o jogador vai controlar a movimentação do próprio modelo do personagem, podendo andar, girar e executar ações de forma fluidas pelo cenário.
 
+Na camera de primeira pessoa será implementadas as mãos do personagem, indicando o que ele está escalando ou vai escalar. Com a câmera de terceira pessoa, mostrará o modelo do boneco 3D. 
+
 ### Diferentes tipos de câmeras
 O jogador vai poder jogar em primeira pessoa, no formato padrão, ou poderá escolher jogar em terceira pessoa, ambas cameras mostradas no video.
 
@@ -71,7 +63,7 @@ A ambientação de cenários e objetos interagiveis vai fazer uso de múltiplas 
 Todo o principio da escalada no jogo se baseia nessa dinâmica. Quando o jogador for subir uma superfície, o jogo exige um contato entre ambos para que a mecânica seja realizada. A mecânica é demonstrada no video. 
 
 ### Modelos de Iluminação em todos os objetos
-O jogo, assim como mostrado no video, vai possuir um sistema de iluminação a partir do Sol.
+O jogo, assim como mostrado no video, vai possuir um sistema de iluminação a partir do Sol.  Para todos os objetos do cenário, será implementado o modelo de iluminação local de Blinn-Phong, considerando uma única fonte de luz direcional representando o Sol.
 
 ### Mapeamento de texturas em todos os objetos
 Utilizaremos de texturas, no estilo cartoon, disponíveis na internet, corrigindo as coordenadas UV dos modelos para que fiquem corretas e que não pareçam artificialmente esticadas e aplicando nos elementos do jogo.
@@ -86,7 +78,10 @@ O movimento de escalada do jogador é um exemplo de implementação desse caso. 
 ### Funcionalidade extra obrigatória
 
 - Interface gráfica de stamina e itens carregados 
-- Sprite de itens
+- Sprite de itens (desenhos das figuras dos itens)
+
+A imagem referencia todos os itens que estarão presentes na interface gráfica.
+![alt text](image.png)
 
 ## Limitações esperadas
 
