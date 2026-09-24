@@ -95,36 +95,20 @@ public:
 
   void processaInput(GLFWwindow *window, float cameraTheta, float deltaT)
   {
-    // Calcula a direção desejada baseada na rotação da câmera
+    // Frente = mesma direção horizontal que a câmera olha (ver camera.h)
     float frenteX = sin(cameraTheta);
-    float frenteZ = -cos(cameraTheta);
-    float direitaX = cos(cameraTheta);
+    float frenteZ = cos(cameraTheta);
+    // Direita = frente x cima
+    float direitaX = -cos(cameraTheta);
     float direitaZ = sin(cameraTheta);
 
     float dirX = 0.0f;
     float dirZ = 0.0f;
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-    {
-      dirX -= frenteX;
-      dirZ -= frenteZ;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-    {
-      dirX += frenteX;
-      dirZ += frenteZ;
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-    {
-      dirX += direitaX;
-      dirZ += direitaZ;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-    {
-      dirX -= direitaX;
-      dirZ -= direitaZ;
-    }
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) { dirX += frenteX;  dirZ += frenteZ; }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) { dirX -= frenteX;  dirZ -= frenteZ; }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) { dirX += direitaX; dirZ += direitaZ; }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) { dirX -= direitaX; dirZ -= direitaZ; }
 
     // Determina a velocidade atual (andando ou correndo)
     float velocidadeAtual = velocidade;

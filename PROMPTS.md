@@ -972,3 +972,201 @@ void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mod)
 }
 ```
 3. Permite com que o jogador consiga fazer a troca entre as cameras
+
+---
+# PROMPT 4
+
+Eu quero fazer um retangulo com profundidade (um paralelepipedo ) e colocar no espaco na frente da posicao inicial do jogador
+
+## RESPOSTA
+
+//função para construir o cubo:
+void BuildBoxAndAddToVirtualScene(const char *name)
+{
+    std::vector<GLuint> indices;
+    std::vector<float> pos, nor, uv;
+
+    // Adiciona uma face (2 triângulos). Os 4 cantos devem estar em ordem
+    // anti-horária vista de FORA, por causa do GL_CULL_FACE / GL_CCW.
+    auto addFace = [&](glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d, glm::vec3 n)
+    {
+        glm::vec3 corners[4] = {a, b, c, d};
+        float us[4] = {0.0f, 1.0f, 1.0f, 0.0f};
+        float vs[4] = {0.0f, 0.0f, 1.0f, 1.0f};
+        int order[6] = {0, 1, 2, 0, 2, 3};
+
+        for (int k = 0; k < 6; ++k)
+        {
+            int i = order[k];
+            indices.push_back((GLuint)indices.size());
+            pos.insert(pos.end(), {corners[i].x, corners[i].y, corners[i].z, 1.0f});
+            nor.insert(nor.end(), {n.x, n.y, n.z, 0.0f});
+            uv.insert(uv.end(), {us[i], vs[i]});
+        }
+    };
+
+    const float h = 0.5f;
+    // Frente (+Z)
+    addFace({-h, 0, h}, {h, 0, h}, {h, 1, h}, {-h, 1, h}, {0, 0, 1});
+    // Trás (-Z)
+    addFace({h, 0, -h}, {-h, 0, -h}, {-h, 1, -h}, {h, 1, -h}, {0, 0, -1});
+    // Direita (+X)
+    addFace({h, 0, h}, {h, 0, -h}, {h, 1, -h}, {h, 1, h}, {1, 0, 0});
+    // Esquerda (-X)
+    addFace({-h, 0, -h}, {-h, 0, h}, {-h, 1, h}, {-h, 1, -h}, {-1, 0, 0});
+    // Topo (+Y)
+    addFace({-h, 1, h}, {h, 1, h}, {h, 1, -h}, {-h, 1, -h}, {0, 1, 0});
+    // Base (-Y)
+    addFace({-h, 0, -h}, {h, 0, -h}, {h, 0, h}, {-h, 0, h}, {0, -1, 0});
+
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    auto upload = [](const std::vector<float> &data, GLuint location, GLint dims)
+    {
+        GLuint vbo;
+        glGenBuffers(1, &vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(location, dims, GL_FLOAT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(location);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    };
+    upload(pos, 0, 4);
+    upload(nor, 1, 4);
+    upload(uv, 2, 2);
+
+    GLuint ebo;
+    glGenBuffers(1, &ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+    glBindVertexArray(0);
+
+    SceneObject obj;
+    obj.name = name;
+    obj.first_index = 0;
+    obj.num_indices = indices.size();
+    obj.rendering_mode = GL_TRIANGLES;
+    obj.vertex_array_object_id = vao;
+    obj.bbox_min = glm::vec3(-h, 0.0f, -h);
+    obj.bbox_max = glm::vec3(h, 1.0f, h);
+    g_VirtualScene[name] = obj;
+}
+
+//Desenhar paralelepípedo à frente da posição inicial do jogador
+glm::mat4 model_box = Matrix_Translate(0.0f, 0.0f, -10.0f)
+                    * Matrix_Scale(4.0f, 3.0f, 2.0f); // largura, altura, profundidade
+glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model_box));
+glUniform1i(g_object_id_uniform, BOX);
+DrawVirtualObject("box");
+
+//Shader:
+{
+    U = texcoords.x;
+    V = texcoords.y;
+    Kd0 = texture(TextureImage1, vec2(U, V)).rgb;
+}
+
+---
+# PROMPT 5
+
+Faça as colisões agora entre o bloco e o personagem
+
+## RESPOSTA 
+
+//Struct do bloco e lista de blocos:
+
+struct BoxObject
+{
+    glm::vec3 pos;   // centro da base (x, y, z)
+    glm::vec3 scale; // largura, altura, profundidade
+};
+
+//função de colisão entre blocos:
+
+std::vector<BoxObject> g_Boxes = {
+    {{0.0f, 0.0f, -10.0f}, {4.0f, 3.0f, 2.0f}},
+};
+
+// Retorna true se o jogador pousou em cima de algum bloco.
+bool ResolvePlayerBoxCollisions(Player &player, float radius, float height)
+{
+    bool landed = false;
+
+    for (const BoxObject &b : g_Boxes)
+    {
+        float minX = b.pos.x - b.scale.x / 2, maxX = b.pos.x + b.scale.x / 2;
+        float minY = b.pos.y,                 maxY = b.pos.y + b.scale.y;
+        float minZ = b.pos.z - b.scale.z / 2, maxZ = b.pos.z + b.scale.z / 2;
+
+        float pMinX = player.posX - radius, pMaxX = player.posX + radius;
+        float pMinY = player.posY,          pMaxY = player.posY + height;
+        float pMinZ = player.posZ - radius, pMaxZ = player.posZ + radius;
+
+        // Sem sobreposição em algum eixo = sem colisão
+        if (pMaxX <= minX || pMinX >= maxX ||
+            pMaxY <= minY || pMinY >= maxY ||
+            pMaxZ <= minZ || pMinZ >= maxZ)
+            continue;
+
+        // Quanto o jogador entrou no bloco, em cada direção
+        float toLeft  = pMaxX - minX, toRight = maxX - pMinX;
+        float toDown  = pMaxY - minY, toUp    = maxY - pMinY;
+        float toBack  = pMaxZ - minZ, toFront = maxZ - pMinZ;
+
+        float penX = std::min(toLeft, toRight);
+        float penY = std::min(toDown, toUp);
+        float penZ = std::min(toBack, toFront);
+
+        if (penY <= penX && penY <= penZ)
+        {
+            if (toUp < toDown) { player.posY = maxY; landed = true; } // em cima
+            else               { player.posY = minY - height; }       // bateu a cabeça
+        }
+        else if (penX <= penZ)
+            player.posX += (toLeft < toRight) ? -toLeft : toRight;
+        else
+            player.posZ += (toBack < toFront) ? -toBack : toFront;
+    }
+    return landed;
+}
+
+// Chamar no loop:
+
+player.processaInput(window, g_CameraTheta, deltaT);
+player.atualizarFisica(deltaT);
+bool naCaixa = ResolvePlayerBoxCollisions(player, 0.4f, 1.8f); // raio, altura
+
+// Desenhar a partir da lista de blocos:
+
+glUniform1i(g_object_id_uniform, BOX);
+for (const BoxObject &b : g_Boxes)
+{
+    glm::mat4 model_box = Matrix_Translate(b.pos.x, b.pos.y, b.pos.z)
+                        * Matrix_Scale(b.scale.x, b.scale.y, b.scale.z);
+    glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model_box));
+    DrawVirtualObject("box");
+}
+
+# PROMPT 6
+
+Faça um código que troque o sistema de movimentação para que a direção seja orientada pelo cursor do mouse
+
+## RESPOSTA 
+
+static bool first = true;
+static double lastX = 0.0, lastY = 0.0;
+if (first) { lastX = xpos; lastY = ypos; first = false; }
+
+float dx = xpos - lastX;
+float dy = ypos - lastY;
+lastX = xpos;
+lastY = ypos;
+
+g_CameraTheta -= 0.003f * dx;
+g_CameraPhi   += 0.003f * dy;
+
+float phimax = 3.141592f / 2 - 0.01f;
+if (g_CameraPhi >  phimax) g_CameraPhi =  phimax;
+if (g_CameraPhi < -phimax) g_CameraPhi = -phimax;
