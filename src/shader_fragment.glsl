@@ -19,6 +19,7 @@ uniform mat4 view;
 uniform mat4 projection;
 
 // Identificador que define qual objeto está sendo desenhado no momento
+#define BOX 7
 #define SPHERE 0
 #define BUNNY  1
 #define PLANE  2
@@ -160,6 +161,13 @@ void main()
     } else if ( object_id == CHARACTER_HAT ) {
         // Cor branca para o chapéu
         Kd0 = vec3(1.0, 1.0, 1.0);
+    } else if ( object_id == BOX ) {
+        // Coordenadas de textura geradas pela função BuildBoxAndAddToVirtualScene()
+        U = texcoords.x;
+        V = texcoords.y;
+
+        // Reutiliza a textura de pedra (mesma do chão)
+        Kd0 = texture(TextureImage1, vec2(U,V)).rgb;
     }
 
     // Equação de Iluminação
