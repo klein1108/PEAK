@@ -20,7 +20,10 @@ public:
   float estaminaMaxima;
 
   bool isNoChao;
+  bool tocandoParede;
+  bool escalando;
 
+  float velocidadeEscalada;
   float impulsoX;
   float impulsoZ;
 
@@ -36,7 +39,7 @@ public:
         velocidadeY(0.0f), isNoChao(true),
         impulsoX(0.0f), impulsoZ(0.0f),
         gravidade(GRAVITY), forcaPulo(10.0f),
-        alturaChao(0.0f)
+        alturaChao(0.0f), tocandoParede(false), escalando(false), velocidadeEscalada(5.0f)
   {
   }
 
@@ -69,6 +72,13 @@ public:
 
   void atualizarFisica(float deltaT)
   {
+
+    if (escalando)
+    {
+        velocidadeY = 0.0f;
+        return; // enquanto escala, a física normal (gravidade) não roda
+    }
+
     // Gravidade e movimento vertical
     velocidadeY += gravidade * deltaT;
     posY += velocidadeY * deltaT;
@@ -95,6 +105,27 @@ public:
 
   void processaInput(GLFWwindow *window, float cameraTheta, float deltaT)
   {
+
+    // Escalada: só entra se estiver encostado numa parede E clicando  o botao esquerdo do mouse
+    if (tocandoParede && glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+    {
+        escalando = true;
+        isNoChao = false;
+        impulsoX = 0.0f;
+        impulsoZ = 0.0f;
+
+        float dy = 0.0f;
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) dy += 1.0f;
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) dy -= 1.0f;
+
+        posY += dy * velocidadeEscalada * deltaT;
+        return; // não executa a movimentação normal enquanto escala
+    }
+    else
+    {
+        escalando = false;
+    }
+
     // Frente = mesma direção horizontal que a câmera olha (ver camera.h)
     float frenteX = sin(cameraTheta);
     float frenteZ = cos(cameraTheta);
@@ -121,7 +152,7 @@ public:
     }
 
     // Executa o Pulo se a tecla ESPAÇO for pressionada
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && isNoChao)
+    if (glfwGetKey(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && isNoChao)
     {
       pular(dirX, dirZ, velocidadeAtual);
     }

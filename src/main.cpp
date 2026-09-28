@@ -140,7 +140,8 @@ void LoadShader(const char *filename, GLuint shader_id);                     // 
 GLuint CreateGpuProgram(GLuint vertex_shader_id, GLuint fragment_shader_id); // Cria um programa de GPU
 void PrintObjModelInfo(ObjModel *);                                          // Imprime no terminal informações sobre um modelo geométrico carregado a partir de um arquivo ".obj"  
 void BuildBoxAndAddToVirtualScene(const char *name);                         // Constrói um cubo (caixa) e adiciona o mesmo na cena virtual
-bool ResolvePlayerBoxCollisions(Player &player, float radius, float height);                                 // Função para debugging
+bool ResolvePlayerBoxCollisions(Player &player, float radius, float height, bool &touchingWall);                                // Função para debugging
+bool TryMantleOnTopOfBoxes(Player &player, float radius, float height);
 
 // Declaração de funções auxiliares para renderizar texto dentro da janela
 // OpenGL. Estas funções estão definidas no arquivo "textrendering.cpp".
@@ -191,7 +192,7 @@ struct BoxObject
 };
 
 std::vector<BoxObject> g_Boxes = {
-    {{0.0f, 0.0f, 10.0f}, {4.0f, 1.5f, 4.0f}},
+    {{0.0f, 0.0f, 10.0f}, {4.0f, 20.0f, 4.0f}},
 };
 
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
@@ -328,7 +329,12 @@ int main(int argc, char *argv[])
     // redimensionada, por consequência alterando o tamanho do "framebuffer"
     // (região de memória onde são armazenados os pixels da imagem).
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
-    FramebufferSizeCallback(window, 800, 600); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
+
+    // Chamamos a função de callback acima uma vez antes de iniciar o loop de
+    // renderização, para definir corretamente a razão de proporção da tela.
+    int fbw, fbh;
+    glfwGetFramebufferSize(window, &fbw, &fbh);
+    FramebufferSizeCallback(window, fbw, fbh);
 
     // Imprimimos no terminal informações sobre a GPU do sistema
     const GLubyte *vendor = glGetString(GL_VENDOR);
@@ -408,8 +414,13 @@ int main(int argc, char *argv[])
 
         player.processaInput(window, g_CameraTheta, deltaT);
         player.atualizarFisica(deltaT);
+        
+        TryMantleOnTopOfBoxes(player, 0.9f, 4.9f);
 
-        bool naCaixa = ResolvePlayerBoxCollisions(player, 0.9f, 4.9f); // valores do Passo 1
+        bool touchingWall = false;
+        bool naCaixa = ResolvePlayerBoxCollisions(player, 0.9f, 4.9f, touchingWall);
+        player.tocandoParede = touchingWall;
+
         if (naCaixa)
         {
             player.velocidadeY = 0.0f;
@@ -996,10 +1007,13 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel *model)
     glBindVertexArray(0);
 }
 
-// Função que resolve colisões entre o jogador e os objetos do tipo BoxObject
-bool ResolvePlayerBoxCollisions(Player &player, float radius, float height)
+// Função que resolve colisões entre o jogador e os objetos do tipo BoxObject 
+//e detecta se esta perto  de  uma parede para escalada
+bool ResolvePlayerBoxCollisions(Player &player, float radius, float height, bool &touchingWall)
 {
     bool landed = false;
+    touchingWall = false;
+    const float wallPad = 0.15f; // margem extra só para detectar contato lateral (escalada)
 
     for (const BoxObject &b : g_Boxes)
     {
@@ -1011,6 +1025,16 @@ bool ResolvePlayerBoxCollisions(Player &player, float radius, float height)
         float pMinY = player.posY,          pMaxY = player.posY + height;
         float pMinZ = player.posZ - radius, pMaxZ = player.posZ + radius;
 
+        // Verificação com margem extra em X e Z (sem margem em Y), só para saber
+        // se o jogador está "perto o suficiente" de uma face lateral do bloco,
+        // e não por cima nem por baixo dele.
+        bool nearX = !(pMaxX <= minX - wallPad || pMinX >= maxX + wallPad);
+        bool nearY = !(pMaxY <= minY || pMinY >= maxY);
+        bool nearZ = !(pMaxZ <= minZ - wallPad || pMinZ >= maxZ + wallPad);
+        if (nearX && nearY && nearZ)
+            touchingWall = true;
+
+        // Colisão "de verdade" (sem margem), para empurrar o jogador para fora
         if (pMaxX <= minX || pMinX >= maxX ||
             pMaxY <= minY || pMinY >= maxY ||
             pMaxZ <= minZ || pMinZ >= maxZ)
@@ -1030,11 +1054,50 @@ bool ResolvePlayerBoxCollisions(Player &player, float radius, float height)
             else               { player.posY = minY - height; player.velocidadeY = 0.0f; }
         }
         else if (penX <= penZ)
+        {
             player.posX += (toLeft < toRight) ? -toLeft : toRight;
+        }
         else
+        {
             player.posZ += (toBack < toFront) ? -toBack : toFront;
+        }
     }
     return landed;
+}
+
+bool TryMantleOnTopOfBoxes(Player &player, float radius, float height)
+{
+    if (!player.escalando)
+        return false;
+
+    const float mantleMargin = 0.3f; // o quão perto do topo já conta como "chegou"
+
+    for (const BoxObject &b : g_Boxes)
+    {
+        float minX = b.pos.x - b.scale.x / 2, maxX = b.pos.x + b.scale.x / 2;
+        float minZ = b.pos.z - b.scale.z / 2, maxZ = b.pos.z + b.scale.z / 2;
+        float top  = b.pos.y + b.scale.y;
+
+        float pMinX = player.posX - radius, pMaxX = player.posX + radius;
+        float pMinZ = player.posZ - radius, pMaxZ = player.posZ + radius;
+
+        bool overlapXZ = !(pMaxX <= minX - 0.5f || pMinX >= maxX + 0.5f ||
+                            pMaxZ <= minZ - 0.5f || pMinZ >= maxZ + 0.5f);
+
+        if (overlapXZ && player.posY >= top - mantleMargin)
+        {
+            // Empurra o jogador para dentro da área do bloco, garantindo que
+            // ele fique de pé totalmente sobre o topo (não na borda).
+            player.posX = std::min(std::max(player.posX, minX + radius), maxX - radius);
+            player.posZ = std::min(std::max(player.posZ, minZ + radius), maxZ - radius);
+            player.posY = top;
+            player.velocidadeY = 0.0f;
+            player.escalando = false;
+            player.isNoChao = true;
+            return true;
+        }
+    }
+    return false;
 }
 
 // Constrói um cubo (caixa) e adiciona o mesmo na cena virtual
