@@ -107,7 +107,7 @@ public:
   {
 
     // Escalada: só entra se estiver encostado numa parede E clicando  o botao esquerdo do mouse
-    if (tocandoParede && glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+    if (tocandoParede && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
         escalando = true;
         isNoChao = false;
@@ -152,7 +152,7 @@ public:
     }
 
     // Executa o Pulo se a tecla ESPAÇO for pressionada
-    if (glfwGetKey(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && isNoChao)
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && isNoChao)
     {
       pular(dirX, dirZ, velocidadeAtual);
     }
