@@ -1170,3 +1170,521 @@ g_CameraPhi   += 0.003f * dy;
 float phimax = 3.141592f / 2 - 0.01f;
 if (g_CameraPhi >  phimax) g_CameraPhi =  phimax;
 if (g_CameraPhi < -phimax) g_CameraPhi = -phimax;
+
+# PROMPT 7
+
+eu quero fazer com que o player , quando escala algum objeto do mapa, seja capaz de se deslocar pra esquerda e para a direita durante a escalada , em qualquer objeto instanciado no mapa , e se ele sair dos limites de uma face , ele troca de face . Refaça o código sabendo que no futuro outros tipos de objetos escaláveis estarão no mapa . 
+
+## RESPOSTA 
+
+//Novo character.h
+
+#ifndef CHARACTER_H
+#define CHARACTER_H
+
+#include <GLFW/glfw3.h>
+#include <cmath>
+
+#define DASH_MOMENTUM 14.0f
+#define GRAVITY -23.0f
+
+class Player
+{
+public:
+  float posX, posY, posZ;
+
+  float velocidade;
+  float velocidadeCorrida;
+  float velocidadeY;
+
+  float estamina;
+  float estaminaMaxima;
+
+  bool isNoChao;
+  bool tocandoParede;
+  bool escalando;
+
+  float velocidadeEscalada;        // velocidade vertical na escalada (W/S)
+  float velocidadeEscaladaLateral; // velocidade lateral na escalada (A/D)
+
+  float impulsoX;
+  float impulsoZ;
+
+  // Normal horizontal da superfície escalável em contato (aponta da superfície
+  // para o jogador). É preenchida pelo main.cpp (UpdatePlayerClimbState) a
+  // cada frame em que tocandoParede == true. O Player não sabe qual forma
+  // geométrica está sendo escalada: só precisa da normal.
+  float paredeNX;
+  float paredeNZ;
+
+  float gravidade;
+  float forcaPulo;
+  float alturaChao;
+
+  Player(float startX = 0.0f, float startY = 0.0f, float startZ = 0.0f)
+      : posX(startX), posY(startY), posZ(startZ),
+        velocidade(8.0f),
+        velocidadeCorrida(12.0f),
+        velocidadeY(0.0f),
+        estamina(100.0f), estaminaMaxima(100.0f),
+        isNoChao(true), tocandoParede(false), escalando(false),
+        velocidadeEscalada(5.0f), velocidadeEscaladaLateral(4.0f),
+        impulsoX(0.0f), impulsoZ(0.0f),
+        paredeNX(0.0f), paredeNZ(1.0f),
+        gravidade(GRAVITY), forcaPulo(10.0f),
+        alturaChao(0.0f)
+  {
+  }
+
+  void pular(float dirX, float dirZ, float velocidadeAtual)
+  {
+    if (isNoChao)
+    {
+      velocidadeY = forcaPulo;
+      isNoChao = false;
+
+      float mag = sqrt(dirX * dirX + dirZ * dirZ);
+      if (mag > 0.0001f)
+      {
+        // Normaliza a direção do movimento
+        dirX /= mag;
+        dirZ /= mag;
+
+        // O impulso horizontal no ar mantém a velocidade atual do movimento
+        impulsoX = dirX * velocidadeAtual;
+        impulsoZ = dirZ * velocidadeAtual;
+      }
+      else
+      {
+        // Parado: pulo estático (vertical puro)
+        impulsoX = 0.0f;
+        impulsoZ = 0.0f;
+      }
+    }
+  }
+
+  void atualizarFisica(float deltaT)
+  {
+
+    if (escalando)
+    {
+        velocidadeY = 0.0f;
+        return; // enquanto escala, a física normal (gravidade) não roda
+    }
+
+    // Gravidade e movimento vertical
+    velocidadeY += gravidade * deltaT;
+    posY += velocidadeY * deltaT;
+
+    // Movimento horizontal durantes o pulo
+    if (!isNoChao)
+    {
+      posX += impulsoX * deltaT;
+      posZ += impulsoZ * deltaT;
+    }
+
+    // Colisão com o chão
+    if (posY <= alturaChao)
+    {
+      posY = alturaChao;
+      velocidadeY = 0.0f;
+      isNoChao = true;
+
+      // Zera os impulsos horizontais ao tocar o chão para evitar deslizamentos
+      impulsoX = 0.0f;
+      impulsoZ = 0.0f;
+    }
+  }
+
+  void processaInput(GLFWwindow *window, float cameraTheta, float deltaT)
+  {
+
+    // Escalada: só entra se estiver encostado numa superfície escalável E
+    // segurando o botão esquerdo do mouse.
+    if (tocandoParede && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+    {
+        escalando = true;
+        isNoChao = false;
+        impulsoX = 0.0f;
+        impulsoZ = 0.0f;
+        velocidadeY = 0.0f;
+
+        // Eixos locais da superfície. O jogador "olha" para dentro dela
+        // (frente = -normal) e a direita é frente x cima, a mesma convenção
+        // usada na movimentação normal abaixo.
+        float frenteX = -paredeNX;
+        float frenteZ = -paredeNZ;
+        float direitaX = -frenteZ;
+        float direitaZ = frenteX;
+
+        float lateral = 0.0f;  // + = direita, - = esquerda
+        float vertical = 0.0f; // + = sobe,    - = desce
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) lateral += 1.0f;
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) lateral -= 1.0f;
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) vertical += 1.0f;
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) vertical -= 1.0f;
+
+        // Evita andar mais rápido na diagonal
+        float mag = sqrt(lateral * lateral + vertical * vertical);
+        if (mag > 1.0f)
+        {
+            lateral /= mag;
+            vertical /= mag;
+        }
+
+        // O deslocamento lateral é feito ao longo da tangente da superfície.
+        // Quem "gruda" o jogador de volta na superfície (e troca de face ao
+        // passar de uma quina) é UpdatePlayerClimbState(), no main.cpp.
+        posX += direitaX * lateral * velocidadeEscaladaLateral * deltaT;
+        posZ += direitaZ * lateral * velocidadeEscaladaLateral * deltaT;
+        posY += vertical * velocidadeEscalada * deltaT;
+
+        // Não deixa descer para dentro do chão
+        if (posY < alturaChao)
+            posY = alturaChao;
+
+        return; // não executa a movimentação normal enquanto escala
+    }
+    else
+    {
+        escalando = false;
+    }
+
+    // Frente = mesma direção horizontal que a câmera olha (ver camera.h)
+    float frenteX = sin(cameraTheta);
+    float frenteZ = cos(cameraTheta);
+    // Direita = frente x cima
+    float direitaX = -cos(cameraTheta);
+    float direitaZ = sin(cameraTheta);
+
+    float dirX = 0.0f;
+    float dirZ = 0.0f;
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) { dirX += frenteX;  dirZ += frenteZ; }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) { dirX -= frenteX;  dirZ -= frenteZ; }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) { dirX += direitaX; dirZ += direitaZ; }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) { dirX -= direitaX; dirZ -= direitaZ; }
+
+    // Determina a velocidade atual (andando ou correndo)
+    float velocidadeAtual = velocidade;
+    if (isNoChao && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && estamina > 0.0f)
+    {
+      velocidadeAtual = velocidadeCorrida;
+      estamina -= 20.0f * deltaT;
+      if (estamina < 0.0f)
+        estamina = 0.0f;
+    }
+
+    // Executa o Pulo se a tecla ESPAÇO for pressionada
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && isNoChao)
+    {
+      pular(dirX, dirZ, velocidadeAtual);
+    }
+
+    // Movimentação no chão (normalizada e multiplicada por deltaT)
+    if (isNoChao)
+    {
+      float mag = sqrt(dirX * dirX + dirZ * dirZ);
+      if (mag > 0.0001f)
+      {
+        dirX /= mag;
+        dirZ /= mag;
+
+        posX += dirX * velocidadeAtual * deltaT;
+        posZ += dirZ * velocidadeAtual * deltaT;
+      }
+    }
+  }
+};
+
+#endif // CHARACTER_H
+
+/ =====================================================================
+// ALTERAÇÕES NO main.cpp  (character.h está completo em outro arquivo)
+// =====================================================================
+ 
+// ---------------------------------------------------------------------
+// [1] PROTÓTIPOS (no topo, junto das outras declarações).
+//     Substitua a declaração antiga de ResolvePlayerBoxCollisions por esta
+//     e acrescente as novas.
+// ---------------------------------------------------------------------
+bool ResolvePlayerBoxCollisions(Player &player, float radius, float height);
+bool TryMantleOnTopOfBoxes(Player &player, float radius, float height);
+void UpdatePlayerClimbState(Player &player, float radius, float height);
+ 
+ 
+// ---------------------------------------------------------------------
+// [2] NOVA STRUCT: contato com uma superfície escalável.
+//     Coloque logo depois da struct BoxObject.
+//     Todo tipo de objeto escalável (caixa, cilindro, esfera, cápsula...)
+//     deve devolver um ClimbContact. O resto do código só usa isto.
+// ---------------------------------------------------------------------
+struct ClimbContact
+{
+    bool hit = false;
+    glm::vec3 point  = glm::vec3(0.0f); // ponto da superfície mais próximo do jogador
+    glm::vec3 normal = glm::vec3(0.0f); // aponta da superfície para o jogador (horizontal por enquanto)
+    float distance   = 0.0f;            // distância (no plano XZ) do centro do jogador até o ponto
+};
+ 
+ 
+// ---------------------------------------------------------------------
+// [3] NO LOOP PRINCIPAL (main), substitua este trecho:
+//
+//         TryMantleOnTopOfBoxes(player, 0.9f, 4.9f);
+//
+//         bool touchingWall = false;
+//         bool naCaixa = ResolvePlayerBoxCollisions(player, 0.9f, 4.9f, touchingWall);
+//         player.tocandoParede = touchingWall;
+//
+//     por este:
+// ---------------------------------------------------------------------
+        TryMantleOnTopOfBoxes(player, 0.9f, 4.9f);
+ 
+        bool naCaixa = ResolvePlayerBoxCollisions(player, 0.9f, 4.9f);
+ 
+        // Detecta a superfície escalável mais próxima, atualiza a normal do
+        // Player e, se estiver escalando, gruda/contorna a superfície.
+        UpdatePlayerClimbState(player, 0.9f, 4.9f);
+ 
+//     (o "if (naCaixa) { ... }" logo abaixo continua igual)
+ 
+ 
+// ---------------------------------------------------------------------
+// [4] FUNÇÃO ALTERADA: ResolvePlayerBoxCollisions
+//     - sumiu o parâmetro touchingWall e a detecção de parede (foi para
+//       FindClimbSurface / UpdatePlayerClimbState);
+//     - enquanto escala, não empurra o jogador na horizontal (senão a
+//       caixa quadrada do jogador "briga" com o contorno redondo da quina).
+// ---------------------------------------------------------------------
+bool ResolvePlayerBoxCollisions(Player &player, float radius, float height)
+{
+    bool landed = false;
+ 
+    for (const BoxObject &b : g_Boxes)
+    {
+        float minX = b.pos.x - b.scale.x / 2, maxX = b.pos.x + b.scale.x / 2;
+        float minY = b.pos.y,                 maxY = b.pos.y + b.scale.y;
+        float minZ = b.pos.z - b.scale.z / 2, maxZ = b.pos.z + b.scale.z / 2;
+ 
+        float pMinX = player.posX - radius, pMaxX = player.posX + radius;
+        float pMinY = player.posY,          pMaxY = player.posY + height;
+        float pMinZ = player.posZ - radius, pMaxZ = player.posZ + radius;
+ 
+        if (pMaxX <= minX || pMinX >= maxX ||
+            pMaxY <= minY || pMinY >= maxY ||
+            pMaxZ <= minZ || pMinZ >= maxZ)
+            continue;
+ 
+        float toLeft  = pMaxX - minX, toRight = maxX - pMinX;
+        float toDown  = pMaxY - minY, toUp    = maxY - pMinY;
+        float toBack  = pMaxZ - minZ, toFront = maxZ - pMinZ;
+ 
+        float penX = std::min(toLeft, toRight);
+        float penY = std::min(toDown, toUp);
+        float penZ = std::min(toBack, toFront);
+ 
+        if (penY <= penX && penY <= penZ)
+        {
+            if (toUp < toDown) { player.posY = maxY; landed = true; }
+            else               { player.posY = minY - height; player.velocidadeY = 0.0f; }
+        }
+        else if (player.escalando)
+        {
+            // Escalando: a posição horizontal é controlada por
+            // UpdatePlayerClimbState(); não empurra aqui.
+            continue;
+        }
+        else if (penX <= penZ)
+        {
+            player.posX += (toLeft < toRight) ? -toLeft : toRight;
+        }
+        else
+        {
+            player.posZ += (toBack < toFront) ? -toBack : toFront;
+        }
+    }
+    return landed;
+}
+ 
+ 
+// ---------------------------------------------------------------------
+// [5] FUNÇÕES NOVAS (coloque junto de TryMantleOnTopOfBoxes)
+// ---------------------------------------------------------------------
+ 
+// Contato do jogador com UMA caixa (BoxObject).
+// Trabalha no plano XZ: acha o ponto do retângulo da caixa mais próximo do
+// jogador. Se esse ponto está no meio de uma face, a normal é a da face; se
+// está numa quina, a normal gira gradualmente => o jogador contorna a quina
+// e passa de uma face para a outra sem pulo.
+// "reach" é a folga extra (além do raio) em que ainda se considera contato.
+static bool ClimbContactWithBox(const BoxObject &b, const Player &p,
+                                float radius, float height, float reach,
+                                ClimbContact &out)
+{
+    float minX = b.pos.x - b.scale.x / 2, maxX = b.pos.x + b.scale.x / 2;
+    float minY = b.pos.y,                 maxY = b.pos.y + b.scale.y;
+    float minZ = b.pos.z - b.scale.z / 2, maxZ = b.pos.z + b.scale.z / 2;
+ 
+    // O corpo do jogador precisa estar na faixa vertical da caixa
+    if (p.posY + height <= minY || p.posY >= maxY)
+        return false;
+ 
+    float cx = std::min(std::max(p.posX, minX), maxX);
+    float cz = std::min(std::max(p.posZ, minZ), maxZ);
+ 
+    float dx = p.posX - cx;
+    float dz = p.posZ - cz;
+    float dist = std::sqrt(dx * dx + dz * dz);
+ 
+    float nx, nz;
+    if (dist > 1e-5f)
+    {
+        nx = dx / dist;
+        nz = dz / dist;
+    }
+    else
+    {
+        // Centro do jogador dentro do retângulo: usa a face mais próxima
+        float dl = p.posX - minX, dr = maxX - p.posX;
+        float db = p.posZ - minZ, df = maxZ - p.posZ;
+        float m = std::min(std::min(dl, dr), std::min(db, df));
+ 
+        nx = 0.0f; nz = 0.0f;
+        if      (m == dl) { nx = -1.0f; cx = minX; }
+        else if (m == dr) { nx =  1.0f; cx = maxX; }
+        else if (m == db) { nz = -1.0f; cz = minZ; }
+        else              { nz =  1.0f; cz = maxZ; }
+        dist = -m;
+    }
+ 
+    if (dist > radius + reach)
+        return false;
+ 
+    out.hit      = true;
+    out.point    = glm::vec3(cx, p.posY, cz);
+    out.normal   = glm::vec3(nx, 0.0f, nz);
+    out.distance = dist;
+    return true;
+}
+ 
+// Procura a superfície escalável mais próxima entre TODOS os objetos
+// escaláveis da cena. Para adicionar um novo tipo (cilindro, esfera,
+// cápsula...), crie uma função ClimbContactWithXxx() como a de cima e
+// acrescente um laço aqui.
+static bool FindClimbSurface(const Player &player, float radius, float height,
+                             ClimbContact &best)
+{
+    const float reach = 0.15f; // folga para detectar contato lateral
+    best = ClimbContact();
+    float bestDist = std::numeric_limits<float>::max();
+ 
+    for (const BoxObject &b : g_Boxes)
+    {
+        ClimbContact c;
+        if (ClimbContactWithBox(b, player, radius, height, reach, c) && c.distance < bestDist)
+        {
+            best = c;
+            bestDist = c.distance;
+        }
+    }
+ 
+    // FUTURO:
+    // for (const CylinderObject &cy : g_Cylinders) { ... }
+    // for (const SphereObject   &sp : g_Spheres)   { ... }
+ 
+    return best.hit;
+}
+ 
+// Chamada uma vez por frame, depois das colisões.
+//  1) acha a superfície escalável mais próxima;
+//  2) atualiza player.tocandoParede e a normal (paredeNX/NZ);
+//  3) se o jogador está escalando, recoloca-o a "radius" de distância da
+//     superfície. Como o ponto mais próximo e a normal são recalculados
+//     todo frame, ao passar do limite de uma face o jogador contorna a
+//     quina e passa para a face seguinte.
+void UpdatePlayerClimbState(Player &player, float radius, float height)
+{
+    ClimbContact contact;
+    bool found = FindClimbSurface(player, radius, height, contact);
+ 
+    player.tocandoParede = found;
+    if (!found)
+        return;
+ 
+    player.paredeNX = contact.normal.x;
+    player.paredeNZ = contact.normal.z;
+ 
+    if (player.escalando)
+    {
+        player.posX = contact.point.x + contact.normal.x * radius;
+        player.posZ = contact.point.z + contact.normal.z * radius;
+    }
+}
+
+# PROMPT 7
+
+vou querer trocar o AABB do personagem pra cilindro em todo o código  , me diga quais modificaçãoes no codigo eu devo trocar
+
+## RESPOSTA 
+
+bool ResolvePlayerBoxCollisions(Player &player, float radius, float height)
+{
+    bool landed = false;
+
+    for (const BoxObject &b : g_Boxes)
+    {
+        float minX = b.pos.x - b.scale.x / 2, maxX = b.pos.x + b.scale.x / 2;
+        float minY = b.pos.y,                 maxY = b.pos.y + b.scale.y;
+        float minZ = b.pos.z - b.scale.z / 2, maxZ = b.pos.z + b.scale.z / 2;
+
+        float pMinY = player.posY, pMaxY = player.posY + height;
+        if (pMaxY <= minY || pMinY >= maxY)
+            continue;
+
+        float cx = std::min(std::max(player.posX, minX), maxX);
+        float cz = std::min(std::max(player.posZ, minZ), maxZ);
+        float dx = player.posX - cx;
+        float dz = player.posZ - cz;
+        float dist = std::sqrt(dx * dx + dz * dz);
+
+        if (dist >= radius)
+            continue;
+
+        float nx, nz, penH;
+        if (dist > 1e-5f)
+        {
+            nx = dx / dist;
+            nz = dz / dist;
+            penH = radius - dist;
+        }
+        else
+        {
+            float dl = player.posX - minX, dr = maxX - player.posX;
+            float db = player.posZ - minZ, df = maxZ - player.posZ;
+            float m = std::min(std::min(dl, dr), std::min(db, df));
+            nx = 0.0f;
+            nz = 0.0f;
+            if      (m == dl) nx = -1.0f;
+            else if (m == dr) nx =  1.0f;
+            else if (m == db) nz = -1.0f;
+            else              nz =  1.0f;
+            penH = radius + m;
+        }
+
+        float toDown = pMaxY - minY, toUp = maxY - pMinY;
+        float penY = std::min(toDown, toUp);
+
+        if (penY <= penH)
+        {
+            if (toUp < toDown) { player.posY = maxY; landed = true; }
+            else               { player.posY = minY - height; player.velocidadeY = 0.0f; }
+        }
+        else
+        {
+            player.posX += nx * penH;
+            player.posZ += nz * penH;
+        }
+    }
+    return landed;
+}
