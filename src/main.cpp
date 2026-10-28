@@ -140,8 +140,9 @@ void LoadShader(const char *filename, GLuint shader_id);                     // 
 GLuint CreateGpuProgram(GLuint vertex_shader_id, GLuint fragment_shader_id); // Cria um programa de GPU
 void PrintObjModelInfo(ObjModel *);                                          // Imprime no terminal informações sobre um modelo geométrico carregado a partir de um arquivo ".obj"  
 void BuildBoxAndAddToVirtualScene(const char *name);                         // Constrói um cubo (caixa) e adiciona o mesmo na cena virtual
-bool ResolvePlayerBoxCollisions(Player &player, float radius, float height, bool &touchingWall);                                // Função para debugging
+bool ResolvePlayerBoxCollisions(Player &player, float radius, float height);
 bool TryMantleOnTopOfBoxes(Player &player, float radius, float height);
+void UpdatePlayerClimbState(Player &player, float radius, float height);
 
 // Declaração de funções auxiliares para renderizar texto dentro da janela
 // OpenGL. Estas funções estão definidas no arquivo "textrendering.cpp".
@@ -191,8 +192,20 @@ struct BoxObject
     glm::vec3 scale; // largura, altura, profundidade
 };
 
+struct ClimbContact
+{
+    bool hit = false;
+    glm::vec3 point = glm::vec3(0.0f);
+    glm::vec3 normal = glm::vec3(0.0f);
+    float distance = 0.0f;
+};
+
+//VETOR DE CAIXAS NA CENA VIRTUAL
 std::vector<BoxObject> g_Boxes = {
-    {{0.0f, 0.0f, 10.0f}, {4.0f, 20.0f, 4.0f}},
+    {{0.0f, 0.0f, 10.0f}, {4.0f, 20.0f, 4.0f}},   
+    {{10.0f, 0.0f, 10.0f}, {6.0f, 8.0f, 6.0f}},   
+    {{-12.0f, 0.0f, 5.0f}, {3.0f, 15.0f, 3.0f}},  
+    {{4.0f, 8.0f, 20.0f}, {5.0f, 2.0f, 5.0f}},    
 };
 
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
@@ -359,14 +372,8 @@ int main(int argc, char *argv[])
     LoadTextureImage("../../data/HEAD.png");         // TextureImage4
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
-    // ObjModel spheremodel("../../data/sphere.obj");
-    // ComputeNormals(&spheremodel);
-    // BuildTrianglesAndAddToVirtualScene(&spheremodel);
 
-    // ObjModel bunnymodel("../../data/bunny.obj");
-    // ComputeNormals(&bunnymodel);
-    // BuildTrianglesAndAddToVirtualScene(&bunnymodel);
-
+    // Adiiconando objeto que representa o chão da cena virtual
     ObjModel planemodel("../../data/plane.obj");
     ComputeNormals(&planemodel);
     BuildTrianglesAndAddToVirtualScene(&planemodel);
@@ -417,9 +424,9 @@ int main(int argc, char *argv[])
         
         TryMantleOnTopOfBoxes(player, 0.9f, 4.9f);
 
-        bool touchingWall = false;
-        bool naCaixa = ResolvePlayerBoxCollisions(player, 0.9f, 4.9f, touchingWall);
-        player.tocandoParede = touchingWall;
+        bool naCaixa = ResolvePlayerBoxCollisions(player, 0.9f, 4.9f);
+
+        UpdatePlayerClimbState(player, 0.9f, 4.9f);
 
         if (naCaixa)
         {
@@ -1007,87 +1014,183 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel *model)
     glBindVertexArray(0);
 }
 
-// Função que resolve colisões entre o jogador e os objetos do tipo BoxObject 
-//e detecta se esta perto  de  uma parede para escalada
-bool ResolvePlayerBoxCollisions(Player &player, float radius, float height, bool &touchingWall)
+// Função que resolve colisões entre o jogador e os objetos do tipo BoxObject
+bool ResolvePlayerBoxCollisions(Player &player, float radius, float height)
 {
     bool landed = false;
-    touchingWall = false;
-    const float wallPad = 0.15f; // margem extra só para detectar contato lateral (escalada)
 
     for (const BoxObject &b : g_Boxes)
     {
+        //calcula intervalo de posicionamento da caixa
         float minX = b.pos.x - b.scale.x / 2, maxX = b.pos.x + b.scale.x / 2;
         float minY = b.pos.y,                 maxY = b.pos.y + b.scale.y;
         float minZ = b.pos.z - b.scale.z / 2, maxZ = b.pos.z + b.scale.z / 2;
 
-        float pMinX = player.posX - radius, pMaxX = player.posX + radius;
-        float pMinY = player.posY,          pMaxY = player.posY + height;
-        float pMinZ = player.posZ - radius, pMaxZ = player.posZ + radius;
+        //calcula intervalo de posicionamento do player
+        float pMinY = player.posY, pMaxY = player.posY + height;
 
-        // Verificação com margem extra em X e Z (sem margem em Y), só para saber
-        // se o jogador está "perto o suficiente" de uma face lateral do bloco,
-        // e não por cima nem por baixo dele.
-        bool nearX = !(pMaxX <= minX - wallPad || pMinX >= maxX + wallPad);
-        bool nearY = !(pMaxY <= minY || pMinY >= maxY);
-        bool nearZ = !(pMaxZ <= minZ - wallPad || pMinZ >= maxZ + wallPad);
-        if (nearX && nearY && nearZ)
-            touchingWall = true;
-
-        // Colisão "de verdade" (sem margem), para empurrar o jogador para fora
-        if (pMaxX <= minX || pMinX >= maxX ||
-            pMaxY <= minY || pMinY >= maxY ||
-            pMaxZ <= minZ || pMinZ >= maxZ)
+        //se o player tiver acima ou embaixo da caixa , desconsidera a colisão para essa caixa
+        if (pMaxY <= minY || pMinY >= maxY)
             continue;
 
-        float toLeft  = pMaxX - minX, toRight = maxX - pMinX;
-        float toDown  = pMaxY - minY, toUp    = maxY - pMinY;
-        float toBack  = pMaxZ - minZ, toFront = maxZ - pMinZ;
+        //se o player estiver fora do raio da caixa, desconsidera a colisão para essa caixa
+        float cx = std::min(std::max(player.posX, minX), maxX);
+        float cz = std::min(std::max(player.posZ, minZ), maxZ);
+        float dx = player.posX - cx;
+        float dz = player.posZ - cz;
+        float dist = std::sqrt(dx * dx + dz * dz);
 
-        float penX = std::min(toLeft, toRight);
+        if (dist >= radius)
+            continue;
+
+        //calcula o vetor normal e a profundidade de penetração
+        float nx, nz, penH;
+        if (dist > 1e-5f)
+        {
+            nx = dx / dist;
+            nz = dz / dist;
+            penH = radius - dist;
+        }
+        else
+        {
+            float dl = player.posX - minX, dr = maxX - player.posX;
+            float db = player.posZ - minZ, df = maxZ - player.posZ;
+            float m = std::min(std::min(dl, dr), std::min(db, df));
+            nx = 0.0f;
+            nz = 0.0f;
+            if      (m == dl) nx = -1.0f;
+            else if (m == dr) nx =  1.0f;
+            else if (m == db) nz = -1.0f;
+            else              nz =  1.0f;
+            penH = radius + m;
+        }
+
+        float toDown = pMaxY - minY, toUp = maxY - pMinY;
         float penY = std::min(toDown, toUp);
-        float penZ = std::min(toBack, toFront);
 
-        if (penY <= penX && penY <= penZ)
+        if (penY <= penH)
         {
             if (toUp < toDown) { player.posY = maxY; landed = true; }
             else               { player.posY = minY - height; player.velocidadeY = 0.0f; }
         }
-        else if (penX <= penZ)
-        {
-            player.posX += (toLeft < toRight) ? -toLeft : toRight;
-        }
         else
         {
-            player.posZ += (toBack < toFront) ? -toBack : toFront;
+            player.posX += nx * penH;
+            player.posZ += nz * penH;
         }
     }
     return landed;
 }
 
+// Função que verifica se o jogador está em contato com uma caixa, para fins de escalada
+static bool ClimbContactWithBox(const BoxObject &b, const Player &p,
+                                float radius, float height, float reach,
+                                ClimbContact &out)
+{
+    float minX = b.pos.x - b.scale.x / 2, maxX = b.pos.x + b.scale.x / 2;
+    float minY = b.pos.y,                 maxY = b.pos.y + b.scale.y;
+    float minZ = b.pos.z - b.scale.z / 2, maxZ = b.pos.z + b.scale.z / 2;
+
+    if (p.posY + height <= minY || p.posY >= maxY)
+        return false;
+
+    float cx = std::min(std::max(p.posX, minX), maxX);
+    float cz = std::min(std::max(p.posZ, minZ), maxZ);
+
+    float dx = p.posX - cx;
+    float dz = p.posZ - cz;
+    float dist = std::sqrt(dx * dx + dz * dz);
+
+    float nx, nz;
+    if (dist > 1e-5f)
+    {
+        nx = dx / dist;
+        nz = dz / dist;
+    }
+    else
+    {
+        float dl = p.posX - minX, dr = maxX - p.posX;
+        float db = p.posZ - minZ, df = maxZ - p.posZ;
+        float m = std::min(std::min(dl, dr), std::min(db, df));
+
+        nx = 0.0f;
+        nz = 0.0f;
+        if (m == dl)      { nx = -1.0f; cx = minX; }
+        else if (m == dr) { nx = 1.0f;  cx = maxX; }
+        else if (m == db) { nz = -1.0f; cz = minZ; }
+        else              { nz = 1.0f;  cz = maxZ; }
+        dist = -m;
+    }
+
+    if (dist > radius + reach)
+        return false;
+
+    out.hit = true;
+    out.point = glm::vec3(cx, p.posY, cz);
+    out.normal = glm::vec3(nx, 0.0f, nz);
+    out.distance = dist;
+    return true;
+}
+
+static bool FindClimbSurface(const Player &player, float radius, float height, ClimbContact &best)
+{
+    const float reach = 0.15f;
+    best = ClimbContact();
+    float bestDist = std::numeric_limits<float>::max();
+
+    for (const BoxObject &b : g_Boxes)
+    {
+        ClimbContact c;
+        if (ClimbContactWithBox(b, player, radius, height, reach, c) && c.distance < bestDist)
+        {
+            best = c;
+            bestDist = c.distance;
+        }
+    }
+
+    return best.hit;
+}
+
+void UpdatePlayerClimbState(Player &player, float radius, float height)
+{
+    ClimbContact contact;
+    bool found = FindClimbSurface(player, radius, height, contact);
+
+    player.tocandoParede = found;
+    if (!found)
+        return;
+
+    player.paredeNX = contact.normal.x;
+    player.paredeNZ = contact.normal.z;
+
+    if (player.escalando)
+    {
+        player.posX = contact.point.x + contact.normal.x * radius;
+        player.posZ = contact.point.z + contact.normal.z * radius;
+    }
+}
+
+// Função que tenta colocar o jogador no topo de uma caixa, caso ele esteja escalando essa caixa.
+// True se jogador foi colocado no topo , false caso contrário 
 bool TryMantleOnTopOfBoxes(Player &player, float radius, float height)
 {
     if (!player.escalando)
         return false;
 
-    const float mantleMargin = 0.3f; // o quão perto do topo já conta como "chegou"
+    const float mantleMargin = 0.3f;
 
     for (const BoxObject &b : g_Boxes)
     {
+        ClimbContact contact;
+        if (!ClimbContactWithBox(b, player, radius, height, 0.15f, contact))
+            continue;
+
         float minX = b.pos.x - b.scale.x / 2, maxX = b.pos.x + b.scale.x / 2;
         float minZ = b.pos.z - b.scale.z / 2, maxZ = b.pos.z + b.scale.z / 2;
         float top  = b.pos.y + b.scale.y;
 
-        float pMinX = player.posX - radius, pMaxX = player.posX + radius;
-        float pMinZ = player.posZ - radius, pMaxZ = player.posZ + radius;
-
-        bool overlapXZ = !(pMaxX <= minX - 0.5f || pMinX >= maxX + 0.5f ||
-                            pMaxZ <= minZ - 0.5f || pMinZ >= maxZ + 0.5f);
-
-        if (overlapXZ && player.posY >= top - mantleMargin)
+        if (player.posY >= top - mantleMargin)
         {
-            // Empurra o jogador para dentro da área do bloco, garantindo que
-            // ele fique de pé totalmente sobre o topo (não na borda).
             player.posX = std::min(std::max(player.posX, minX + radius), maxX - radius);
             player.posZ = std::min(std::max(player.posZ, minZ + radius), maxZ - radius);
             player.posY = top;

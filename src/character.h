@@ -23,9 +23,18 @@ public:
   bool tocandoParede;
   bool escalando;
 
-  float velocidadeEscalada;
+  float velocidadeEscalada;        // velocidade vertical na escalada (W/S)
+  float velocidadeEscaladaLateral; // velocidade lateral na escalada (A/D)
+
   float impulsoX;
   float impulsoZ;
+
+  // Normal horizontal da superfície escalável em contato (aponta da superfície
+  // para o jogador). É preenchida pelo main.cpp (UpdatePlayerClimbState) a
+  // cada frame em que tocandoParede == true. O Player não sabe qual forma
+  // geométrica está sendo escalada: só precisa da normal.
+  float paredeNX;
+  float paredeNZ;
 
   float gravidade;
   float forcaPulo;
@@ -35,11 +44,14 @@ public:
       : posX(startX), posY(startY), posZ(startZ),
         velocidade(8.0f),
         velocidadeCorrida(12.0f),
+        velocidadeY(0.0f),
         estamina(100.0f), estaminaMaxima(100.0f),
-        velocidadeY(0.0f), isNoChao(true),
+        isNoChao(true), tocandoParede(false), escalando(false),
+        velocidadeEscalada(5.0f), velocidadeEscaladaLateral(4.0f),
         impulsoX(0.0f), impulsoZ(0.0f),
+        paredeNX(0.0f), paredeNZ(1.0f),
         gravidade(GRAVITY), forcaPulo(10.0f),
-        alturaChao(0.0f), tocandoParede(false), escalando(false), velocidadeEscalada(5.0f)
+        alturaChao(0.0f)
   {
   }
 
@@ -106,19 +118,50 @@ public:
   void processaInput(GLFWwindow *window, float cameraTheta, float deltaT)
   {
 
-    // Escalada: só entra se estiver encostado numa parede E clicando  o botao esquerdo do mouse
+    // Escalada: só entra se estiver encostado numa superfície escalável E
+    // segurando o botão esquerdo do mouse.
     if (tocandoParede && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
         escalando = true;
         isNoChao = false;
         impulsoX = 0.0f;
         impulsoZ = 0.0f;
+        velocidadeY = 0.0f;
 
-        float dy = 0.0f;
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) dy += 1.0f;
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) dy -= 1.0f;
+        // Eixos locais da superfície. O jogador "olha" para dentro dela
+        // (frente = -normal) e a direita é frente x cima, a mesma convenção
+        // usada na movimentação normal abaixo.
+        float frenteX = -paredeNX;
+        float frenteZ = -paredeNZ;
+        float direitaX = -frenteZ;
+        float direitaZ = frenteX;
 
-        posY += dy * velocidadeEscalada * deltaT;
+        float lateral = 0.0f;  // + = direita, - = esquerda
+        float vertical = 0.0f; // + = sobe,    - = desce
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) lateral += 1.0f;
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) lateral -= 1.0f;
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) vertical += 1.0f;
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) vertical -= 1.0f;
+
+        // Evita andar mais rápido na diagonal
+        float mag = sqrt(lateral * lateral + vertical * vertical);
+        if (mag > 1.0f)
+        {
+            lateral /= mag;
+            vertical /= mag;
+        }
+
+        // O deslocamento lateral é feito ao longo da tangente da superfície.
+        // Quem "gruda" o jogador de volta na superfície (e troca de face ao
+        // passar de uma quina) é UpdatePlayerClimbState(), no main.cpp.
+        posX += direitaX * lateral * velocidadeEscaladaLateral * deltaT;
+        posZ += direitaZ * lateral * velocidadeEscaladaLateral * deltaT;
+        posY += vertical * velocidadeEscalada * deltaT;
+
+        // Não deixa descer para dentro do chão
+        if (posY < alturaChao)
+            posY = alturaChao;
+
         return; // não executa a movimentação normal enquanto escala
     }
     else
