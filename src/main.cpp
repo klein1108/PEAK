@@ -60,6 +60,7 @@
 #define CHARACTER_HEAD 4
 #define CHARACTER_CLOTHES 5
 #define CHARACTER_HAT 6
+#define HAND 8
 
 #define GROUND_DEFAULT_SX 200.0f
 #define GROUND_DEFAULT_SY 1.0f
@@ -376,7 +377,7 @@ int main(int argc, char *argv[])
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
 
-    // Adiiconando objeto que representa o chão da cena virtual
+    // Adiconando objeto que representa o chão da cena virtual
     ObjModel planemodel("../../data/plane.obj");
     ComputeNormals(&planemodel);
     BuildTrianglesAndAddToVirtualScene(&planemodel);
@@ -385,6 +386,11 @@ int main(int argc, char *argv[])
     ObjModel charmodel("../../data/PEAKchar.obj");
     ComputeNormals(&charmodel);
     BuildTrianglesAndAddToVirtualScene(&charmodel);
+
+    // Adicionando objeto da mão do personagem
+    ObjModel handmodel("../../data/hand1.obj");
+    ComputeNormals(&handmodel);
+    BuildTrianglesAndAddToVirtualScene(&handmodel);
 
     // Construímos uma caixa (cubo) e adicionamos a mesma na cena virtual.
     BuildBoxAndAddToVirtualScene("box");
@@ -563,6 +569,48 @@ int main(int argc, char *argv[])
 
             glUniform1i(g_object_id_uniform, CHARACTER_HAT);
             DrawVirtualObject("the_peakchar_hat");
+        }
+        else
+        {
+            // Mãos desenhadas "por cima" da cena, para não atravessarem paredes
+            glClear(GL_DEPTH_BUFFER_BIT);
+
+            // Referencial da câmera: +Z = para onde ela olha, +X = esquerda do jogador
+            glm::mat4 base =
+                Matrix_Translate(camera.position_c.x, camera.position_c.y, camera.position_c.z) *
+                Matrix_Rotate_Y(g_CameraTheta) *
+                Matrix_Rotate_X(-g_CameraPhi);
+
+            // O hand1.obj está fora da origem; este vetor leva o centro dele para (0,0,0)
+            glm::mat4 centraliza = Matrix_Translate(1.5f, -2.6f, 0.62f);
+
+            // Animação de subida: mãos se alternam enquanto o jogador sobe
+            float anim = 0.0f;
+            if (player.escalando)
+                anim = sinf((float)glfwGetTime() * 6.0f) * 0.25f;
+
+            glUniform1i(g_object_id_uniform, HAND);
+
+            const float ANGULO_MAO = 1.5708f; // +90°
+
+            // Mão do arquivo
+            glm::mat4 maoD = base *
+                             Matrix_Translate(-0.6f, -0.5f + anim, 1.0f) *
+                             Matrix_Rotate_Y(ANGULO_MAO) *
+                             centraliza;
+            glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(maoD));
+            DrawVirtualObject("BODY.004");
+
+            // Mão espelhada em X
+            glm::mat4 maoE = base *
+                             Matrix_Translate(0.6f, -0.5f - anim, 1.0f) *
+                             Matrix_Scale(-1.0f, 1.0f, 1.0f) *
+                             Matrix_Rotate_Y(ANGULO_MAO) *
+                             centraliza;
+            glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(maoE));
+            glFrontFace(GL_CW); // espelhar inverte a ordem dos vértices; sem isso o culling some com a mão
+            DrawVirtualObject("BODY.004");
+            glFrontFace(GL_CCW);
         }
 
         // Desenhamos as caixas (cubos) da cena virtual

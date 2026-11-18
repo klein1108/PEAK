@@ -27,6 +27,8 @@ uniform mat4 projection;
 #define CHARACTER_HEAD 4
 #define CHARACTER_CLOTHES 5
 #define CHARACTER_HAT 6
+#define HAND 8
+
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -168,6 +170,8 @@ void main()
 
         // Reutiliza a textura de pedra (mesma do chão)
         Kd0 = texture(TextureImage1, vec2(U,V)).rgb;
+    } else if (object_id == HAND) {
+         Kd0 = texture(TextureImage2, vec2(0.5, 0.5)).rgb;
     }
 
     // Equação de Iluminação
