@@ -28,12 +28,16 @@ uniform mat4 projection;
 #define CHARACTER_CLOTHES 5
 #define CHARACTER_HAT 6
 #define HAND 8
+#define BACKPACK 9
 
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
 uniform vec4 bbox_min;
 uniform vec4 bbox_max;
+
+// Cor difusa (Kd) do material atual, usada pela mochila
+uniform vec3 material_kd;
 
 // Variáveis para acesso das imagens de textura
 uniform sampler2D TextureImage0;
@@ -172,6 +176,8 @@ void main()
         Kd0 = texture(TextureImage1, vec2(U,V)).rgb;
     } else if (object_id == HAND) {
          Kd0 = texture(TextureImage2, vec2(0.5, 0.5)).rgb;
+    } else if (object_id == BACKPACK) {
+         Kd0 = material_kd;
     }
 
     // Equação de Iluminação

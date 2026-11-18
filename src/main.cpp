@@ -48,7 +48,7 @@
 // Headers locais, definidos na pasta "include/"
 #include "utils.h"
 #include "matrices.h"
-
+#include "backpack.h"
 #include "character.h"
 #include "camera.h"
 
@@ -61,6 +61,7 @@
 #define CHARACTER_CLOTHES 5
 #define CHARACTER_HAT 6
 #define HAND 8
+#define BACKPACK 9
 
 #define GROUND_DEFAULT_SX 200.0f
 #define GROUND_DEFAULT_SY 1.0f
@@ -138,6 +139,7 @@ void ComputeNormals(ObjModel *model);                                        // 
 void LoadShadersFromFiles();                                                 // Carrega os shaders de vértice e fragmento, criando um programa de GPU
 void LoadTextureImage(const char *filename);                                 // Função que carrega imagens de textura
 void DrawVirtualObject(const char *object_name);                             // Desenha um objeto armazenado em g_VirtualScene
+void DrawVirtualObjectMaterials(const char *object_name);                    // Desenha um objeto trecho a trecho, com a cor Kd de cada material
 GLuint LoadShader_Vertex(const char *filename);                              // Carrega um vertex shader
 GLuint LoadShader_Fragment(const char *filename);                            // Carrega um fragment shader
 void LoadShader(const char *filename, GLuint shader_id);                     // Função utilizada pelas duas acima
@@ -176,6 +178,14 @@ void MouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow *window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow *window, double xoffset, double yoffset);
 
+// Trecho de um objeto que usa um único material (cor Kd do arquivo .mtl)
+struct SubMesh
+{
+    size_t first_index; // primeiro índice dentro do vetor indices[]
+    size_t num_indices; // quantidade de índices deste trecho
+    glm::vec3 kd;       // cor difusa do material
+};
+
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
 struct SceneObject
@@ -187,6 +197,7 @@ struct SceneObject
     GLuint vertex_array_object_id; // ID do VAO onde estão armazenados os atributos do modelo
     glm::vec3 bbox_min;            // Axis-Aligned Bounding Box do objeto
     glm::vec3 bbox_max;
+    std::vector<SubMesh> parts; // trechos por material (usado pela mochila)
 };
 
 // Estrutura que representa um paralelepípedo (caixa) na cena virtual.
@@ -267,11 +278,14 @@ GLint g_projection_uniform;
 GLint g_object_id_uniform;
 GLint g_bbox_min_uniform;
 GLint g_bbox_max_uniform;
+GLint g_material_kd_uniform;
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
 
 Player player;
+
+Backpack mochila;
 
 Camera camera;
 
@@ -391,6 +405,14 @@ int main(int argc, char *argv[])
     ObjModel handmodel("../../data/hand1.obj");
     ComputeNormals(&handmodel);
     BuildTrianglesAndAddToVirtualScene(&handmodel);
+
+    // Adicionando objeto da mochila (shapes: "bag", "sleepingbag", "Plane.004")
+    ObjModel backpackmodel("../../data/backpack.obj");
+    ComputeNormals(&backpackmodel);
+    BuildTrianglesAndAddToVirtualScene(&backpackmodel);
+
+    // Posição inicial da mochila no chão (ajuste para ficar perto do spawn)
+    mochila.colocarNoChao(glm::vec3(4.0f, 0.0f, 4.0f));
 
     // Construímos uma caixa (cubo) e adicionamos a mesma na cena virtual.
     BuildBoxAndAddToVirtualScene("box");
@@ -622,6 +644,34 @@ int main(int argc, char *argv[])
             DrawVirtualObject("box");
         }
 
+        // Desenhamos a mochila (no chão, ou nas costas se estiver equipada)
+        {
+            bool desenhaMochila = true;
+            glm::mat4 modelMochila;
+            if (mochila.estado == Backpack::Estado::Ground)
+                modelMochila = mochila.modeloNoChao();
+            else if (!camera.isPrimeiraPessoa)
+                modelMochila = mochila.modeloEquipada(model_personagem);
+            else
+                desenhaMochila = false; // em primeira pessoa não aparece nas costas
+
+            if (desenhaMochila)
+            {
+                glUniform1i(g_object_id_uniform, BACKPACK);
+                glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(modelMochila));
+                for (const char *n : {"bag", "sleepingbag", "Plane.004"})
+                    DrawVirtualObjectMaterials(n);
+            }
+        }
+
+        // HUD da mochila
+        {
+            float padHud = TextRendering_LineHeight(window);
+            TextRendering_PrintString(window, mochila.textoHud(), -1.0f + padHud / 10, -1.0f + 5 * padHud, 1.0f);
+            if (mochila.jogadorPerto(player.posX, player.posY, player.posZ))
+                TextRendering_PrintString(window, "[E] Pegar mochila", -0.2f, -0.5f, 1.0f);
+        }
+
         // Imprimimos na tela os ângulos de Euler que controlam a rotação do
         // terceiro cubo.
         TextRendering_ShowEulerAngles(window);
@@ -739,6 +789,30 @@ void DrawVirtualObject(const char *object_name)
     glBindVertexArray(0);
 }
 
+// Desenha um objeto de g_VirtualScene trecho a trecho, enviando a cor Kd de
+// cada material no uniform "material_kd". Usado pela mochila.
+void DrawVirtualObjectMaterials(const char *object_name)
+{
+    SceneObject &o = g_VirtualScene[object_name];
+
+    glBindVertexArray(o.vertex_array_object_id);
+
+    glUniform4f(g_bbox_min_uniform, o.bbox_min.x, o.bbox_min.y, o.bbox_min.z, 1.0f);
+    glUniform4f(g_bbox_max_uniform, o.bbox_max.x, o.bbox_max.y, o.bbox_max.z, 1.0f);
+
+    for (const SubMesh &p : o.parts)
+    {
+        glUniform3f(g_material_kd_uniform, p.kd.x, p.kd.y, p.kd.z);
+        glDrawElements(
+            o.rendering_mode,
+            p.num_indices,
+            GL_UNSIGNED_INT,
+            (void *)(p.first_index * sizeof(GLuint)));
+    }
+
+    glBindVertexArray(0);
+}
+
 // Função que carrega os shaders de vértices e de fragmentos que serão
 // utilizados para renderização. Veja slides 180-200 do documento Aula_03_Rendering_Pipeline_Grafico.pdf.
 //
@@ -781,6 +855,7 @@ void LoadShadersFromFiles()
     g_object_id_uniform = glGetUniformLocation(g_GpuProgramID, "object_id");   // Variável "object_id" em shader_fragment.glsl
     g_bbox_min_uniform = glGetUniformLocation(g_GpuProgramID, "bbox_min");
     g_bbox_max_uniform = glGetUniformLocation(g_GpuProgramID, "bbox_max");
+    g_material_kd_uniform = glGetUniformLocation(g_GpuProgramID, "material_kd");
 
     // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
     glUseProgram(g_GpuProgramID);
@@ -959,8 +1034,25 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel *model)
         glm::vec3 bbox_min = glm::vec3(maxval, maxval, maxval);
         glm::vec3 bbox_max = glm::vec3(minval, minval, minval);
 
+        // Trechos do objeto agrupados por material (cor Kd do .mtl)
+        std::vector<SubMesh> parts;
+        int ultimoMat = -2;
+
         for (size_t triangle = 0; triangle < num_triangles; ++triangle)
         {
+            int mid = model->shapes[shape].mesh.material_ids[triangle];
+            if (mid != ultimoMat)
+            {
+                glm::vec3 kd(0.6f);
+                if (mid >= 0 && mid < (int)model->materials.size())
+                    kd = glm::vec3(model->materials[mid].diffuse[0],
+                                   model->materials[mid].diffuse[1],
+                                   model->materials[mid].diffuse[2]);
+                parts.push_back({first_index + 3 * triangle, 0, kd});
+                ultimoMat = mid;
+            }
+            parts.back().num_indices += 3;
+
             assert(model->shapes[shape].mesh.num_face_vertices[triangle] == 3);
 
             for (size_t vertex = 0; vertex < 3; ++vertex)
@@ -1022,6 +1114,7 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel *model)
 
         theobject.bbox_min = bbox_min;
         theobject.bbox_max = bbox_max;
+        theobject.parts = parts;
 
         g_VirtualScene[model->shapes[shape].name] = theobject;
     }
@@ -1766,6 +1859,33 @@ void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mod)
     if (key == GLFW_KEY_C && action == GLFW_PRESS)
     {
         camera.isPrimeiraPessoa = !camera.isPrimeiraPessoa; // Inverte o estado
+    }
+
+    // E: pega a mochila do chão (se estiver perto)
+    if (key == GLFW_KEY_E && action == GLFW_PRESS &&
+        mochila.jogadorPerto(player.posX, player.posY, player.posZ))
+    {
+        mochila.equipar();
+    }
+
+    // G: solta a mochila à frente do jogador
+    if (key == GLFW_KEY_G && action == GLFW_PRESS)
+    {
+        mochila.soltar(player.posX, player.alturaChao, player.posZ, g_CameraTheta);
+    }
+
+    // 1: TESTE - coloca uma pedra de 3 kg na mochila
+    if (key == GLFW_KEY_1 && action == GLFW_PRESS)
+    {
+        AddingResult r = mochila.adicionar({1, "Pedra", 3.0f});
+        if (r == AddingResult::NoSlots)
+            printf("Mochila cheia!\n");
+    }
+
+    // 2: TESTE - tira o último item da mochila
+    if (key == GLFW_KEY_2 && action == GLFW_PRESS && !mochila.itens.empty())
+    {
+        mochila.removerItem(mochila.itens.size() - 1);
     }
 }
 

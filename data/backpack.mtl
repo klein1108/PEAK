@@ -1,0 +1,67 @@
+# Blender 5.3.0 MTL File: 'None'
+# www.blender.org
+
+newmtl Material.003
+Ka 1.000000 1.000000 1.000000
+Kd 0.538812 0.177716 0.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Ns C:/Users/Iisis/Dropbox/My PC (LAPTOP-G4DDO05D)/Downloads/blender texture/basic carpet/BasicCarpet01_4K_Roughness.png
+map_Bump -bm 1.000000 C:/Users/Iisis/Dropbox/My PC (LAPTOP-G4DDO05D)/Downloads/blender texture/basic carpet/BasicCarpet01_4K_Normal.png
+
+newmtl Material.005
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.079664 0.001847
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Ns C:/Users/Iisis/Dropbox/My PC (LAPTOP-G4DDO05D)/Downloads/blender texture/basic carpet/BasicCarpet01_4K_Roughness.png
+map_Bump -bm 1.000000 C:/Users/Iisis/Dropbox/My PC (LAPTOP-G4DDO05D)/Downloads/blender texture/basic carpet/BasicCarpet01_4K_Normal.png
+
+newmtl Material.006
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.422812 0.422812 0.422812
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+
+newmtl Material.007
+Ka 1.000000 1.000000 1.000000
+Kd 0.061391 0.103381 0.025298
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Ns C:/Users/Iisis/Dropbox/My PC (LAPTOP-G4DDO05D)/Downloads/blender texture/basic carpet/BasicCarpet01_4K_Roughness.png
+map_Bump -bm 1.000000 C:/Users/Iisis/Dropbox/My PC (LAPTOP-G4DDO05D)/Downloads/blender texture/basic carpet/BasicCarpet01_4K_Normal.png
+
+newmtl Material.008
+Ka 1.000000 1.000000 1.000000
+Kd 0.020181 0.021281 0.035443
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Ns C:/Users/Iisis/Dropbox/My PC (LAPTOP-G4DDO05D)/Downloads/blender texture/basic carpet/BasicCarpet01_4K_Roughness.png
+map_Bump -bm 1.000000 C:/Users/Iisis/Dropbox/My PC (LAPTOP-G4DDO05D)/Downloads/blender texture/basic carpet/BasicCarpet01_4K_Normal.png
+
+newmtl Material.011
+Ka 1.000000 1.000000 1.000000
+Kd 0.066361 0.024114 0.002461
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Ns C:/Users/Iisis/Dropbox/My PC (LAPTOP-G4DDO05D)/Downloads/blender texture/basic carpet/BasicCarpet01_4K_Roughness.png
+map_Bump -bm 1.000000 C:/Users/Iisis/Dropbox/My PC (LAPTOP-G4DDO05D)/Downloads/blender texture/basic carpet/BasicCarpet01_4K_Normal.png
