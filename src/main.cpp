@@ -65,6 +65,9 @@
 #define GROUND_DEFAULT_SY 1.0f
 #define GROUND_DEFAULT_SZ 200.0f
 
+#define CLIMB_REACH 0.6f
+#define MOUSE_SENS 0.0015f
+
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
 struct ObjModel
@@ -495,7 +498,7 @@ int main(int argc, char *argv[])
         {
             // Projeção Perspectiva.
             // Para definição do field of view (FOV), veja slides 205-215 do documento Aula_09_Projecoes.pdf.
-            float field_of_view = 3.141592 / 3.0f;
+            float field_of_view = 3.141592 / 3.0f; // 90 graus
             projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
         }
         else
@@ -532,20 +535,35 @@ int main(int argc, char *argv[])
         // Criamos uma nova matriz para o personagem (sem a escala gigante do chão)
         // Se o chão estiver em Y = 0.0f, você pode precisar subir o personagem um pouco no eixo Y
         // para ele não ficar enterrado pela metade (ex: Matrix_Translate(0.0f, 1.0f, 0.0f))
-        glm::mat4 model_personagem = Matrix_Translate(player.posX, player.posY, player.posZ);
+
+        const float OFFSET_MODELO = 0.0f;
+
+        float anguloCorpo = g_CameraTheta + OFFSET_MODELO;
+
+        // escalar não move o  corpo, fica virado para a parede
+        if (player.escalando)
+            anguloCorpo = atan2f(-player.paredeNX, -player.paredeNZ) + OFFSET_MODELO;
+
+        glm::mat4 model_personagem =
+            Matrix_Translate(player.posX, player.posY, player.posZ) *
+            Matrix_Rotate_Y(anguloCorpo);
+
         glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model_personagem));
 
-        glUniform1i(g_object_id_uniform, CHARACTER_BODY);
-        DrawVirtualObject("the_peakchar_body");
+        if (!camera.isPrimeiraPessoa)
+        {
+            glUniform1i(g_object_id_uniform, CHARACTER_BODY);
+            DrawVirtualObject("the_peakchar_body");
 
-        glUniform1i(g_object_id_uniform, CHARACTER_CLOTHES);
-        DrawVirtualObject("the_peakchar_clothes");
+            glUniform1i(g_object_id_uniform, CHARACTER_CLOTHES);
+            DrawVirtualObject("the_peakchar_clothes");
 
-        glUniform1i(g_object_id_uniform, CHARACTER_HEAD);
-        DrawVirtualObject("the_peakchar_head");
+            glUniform1i(g_object_id_uniform, CHARACTER_HEAD);
+            DrawVirtualObject("the_peakchar_head");
 
-        glUniform1i(g_object_id_uniform, CHARACTER_HAT);
-        DrawVirtualObject("the_peakchar_hat");
+            glUniform1i(g_object_id_uniform, CHARACTER_HAT);
+            DrawVirtualObject("the_peakchar_hat");
+        }
 
         // Desenhamos as caixas (cubos) da cena virtual
         glUniform1i(g_object_id_uniform, BOX);
@@ -1162,7 +1180,7 @@ static bool ClimbContactWithBox(const BoxObject &b, const Player &p,
 
 static bool FindClimbSurface(const Player &player, float radius, float height, ClimbContact &best)
 {
-    const float reach = 0.15f;
+    const float reach = CLIMB_REACH;
     best = ClimbContact();
     float bestDist = std::numeric_limits<float>::max();
 
@@ -1210,7 +1228,7 @@ bool TryMantleOnTopOfBoxes(Player &player, float radius, float height)
     for (const BoxObject &b : g_Boxes)
     {
         ClimbContact contact;
-        if (!ClimbContactWithBox(b, player, radius, height, 0.15f, contact))
+        if (!ClimbContactWithBox(b, player, radius, height, CLIMB_REACH, contact))
             continue;
 
         float minX = b.pos.x - b.scale.x / 2, maxX = b.pos.x + b.scale.x / 2;
@@ -1560,8 +1578,8 @@ void CursorPosCallback(GLFWwindow *window, double xpos, double ypos)
     lastX = xpos;
     lastY = ypos;
 
-    g_CameraTheta -= 0.003f * dx;
-    g_CameraPhi += 0.003f * dy;
+    g_CameraTheta -= MOUSE_SENS * dx;
+    g_CameraPhi -= MOUSE_SENS * dy;
 
     float phimax = 3.141592f / 2 - 0.01f;
     if (g_CameraPhi > phimax)
@@ -1699,7 +1717,7 @@ void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mod)
 
     if (key == GLFW_KEY_C && action == GLFW_PRESS)
     {
-        camera.primeira_pessoa = !camera.primeira_pessoa; // Inverte o estado
+        camera.isPrimeiraPessoa = !camera.isPrimeiraPessoa; // Inverte o estado
     }
 }
 

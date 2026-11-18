@@ -13,7 +13,7 @@ struct Camera
   glm::vec4 view_vector;
   glm::vec4 up_vector = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
 
-  bool primeira_pessoa = false;
+  bool isPrimeiraPessoa = false;
 
   // Agora recebemos theta (esquerda/direita) e phi (cima/baixo)
   void atualizar(float player_x, float player_y, float player_z, float theta, float phi)
@@ -33,12 +33,15 @@ struct Camera
 
     glm::vec4 direcao_mouse = glm::vec4(dir_x, dir_y, dir_z, 0.0f);
 
-    if (primeira_pessoa)
+    if (isPrimeiraPessoa)
     {
-      float altura_olhos = 4.0f; // Ajuste fino da altura da cabeça
+      float alturaOlhos = 4.0f; // Ajuste fino da altura da cabeça
+      float recuo = 0.6f;
 
       // A câmera fica exatamente onde o corpo do boneco está
-      position_c = glm::vec4(player_x, player_y + altura_olhos, player_z, 1.0f);
+      position_c = glm::vec4(player_x - sin(theta) * recuo,
+                             player_y + alturaOlhos,
+                             player_z - cos(theta) * recuo, 1.0f);
 
       // E o "alvo" para onde ela olha é a posição dela + a direção do mouse
       lookat_l = position_c + direcao_mouse;
