@@ -41,6 +41,7 @@ public:
 
   float gravidade;
   float forcaPulo;
+  float velocidadeAr;
   float alturaChao;
 
   Player(float startX = 0.0f, float startY = 0.0f, float startZ = 0.0f)
@@ -55,6 +56,7 @@ public:
         ultimaVelX(0.0f), ultimaVelZ(0.0f),
         paredeNX(0.0f), paredeNZ(1.0f),
         gravidade(GRAVITY), forcaPulo(10.0f),
+        velocidadeAr(8.0f),
         alturaChao(0.0f)
   {
   }
@@ -65,21 +67,18 @@ public:
     {
       velocidadeY = forcaPulo;
       isNoChao = false;
+      velocidadeAr = velocidadeAtual; // andando ou correndo
 
       float mag = sqrt(dirX * dirX + dirZ * dirZ);
       if (mag > 0.0001f)
       {
-        // Normaliza a direção do movimento
         dirX /= mag;
         dirZ /= mag;
-
-        // O impulso horizontal no ar mantém a velocidade atual do movimento
         impulsoX = dirX * velocidadeAtual;
         impulsoZ = dirZ * velocidadeAtual;
       }
       else
       {
-        // Parado: pulo estático (vertical puro)
         impulsoX = 0.0f;
         impulsoZ = 0.0f;
       }
@@ -126,6 +125,9 @@ public:
       isNoChao = false;
       impulsoX = ultimaVelX;
       impulsoZ = ultimaVelZ;
+
+      float v = sqrt(ultimaVelX * ultimaVelX + ultimaVelZ * ultimaVelZ);
+      velocidadeAr = (v > 0.0001f) ? v : velocidade;
     }
   }
 
@@ -143,6 +145,7 @@ public:
       ultimaVelX = 0.0f;
       ultimaVelZ = 0.0f;
       velocidadeY = 0.0f;
+      velocidadeAr = velocidade; // ao soltar a parede, cai com velocidade de caminhada
 
       // Eixos locais da superfície. O jogador "olha" para dentro dela
       // (frente = -normal) e a direita é frente x cima, a mesma convenção
@@ -259,6 +262,20 @@ public:
         ultimaVelZ = 0.0f;
       }
     }
+    else
+    {
+      // Controle no ar: mesma velocidade e resposta em todas as direções,
+      // sem aceleração (o input define a velocidade horizontal diretamente).
+      float mag = sqrt(dirX * dirX + dirZ * dirZ);
+      if (mag > 0.0001f)
+      {
+        dirX /= mag;
+        dirZ /= mag;
+
+        impulsoX = dirX * velocidadeAr;
+        impulsoZ = dirZ * velocidadeAr;
+      }
+        }
   }
 };
 
