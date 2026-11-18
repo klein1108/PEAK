@@ -138,7 +138,7 @@ GLuint LoadShader_Vertex(const char *filename);                              // 
 GLuint LoadShader_Fragment(const char *filename);                            // Carrega um fragment shader
 void LoadShader(const char *filename, GLuint shader_id);                     // Função utilizada pelas duas acima
 GLuint CreateGpuProgram(GLuint vertex_shader_id, GLuint fragment_shader_id); // Cria um programa de GPU
-void PrintObjModelInfo(ObjModel *);                                          // Imprime no terminal informações sobre um modelo geométrico carregado a partir de um arquivo ".obj"  
+void PrintObjModelInfo(ObjModel *);                                          // Imprime no terminal informações sobre um modelo geométrico carregado a partir de um arquivo ".obj"
 void BuildBoxAndAddToVirtualScene(const char *name);                         // Constrói um cubo (caixa) e adiciona o mesmo na cena virtual
 bool ResolvePlayerBoxCollisions(Player &player, float radius, float height);
 bool TryMantleOnTopOfBoxes(Player &player, float radius, float height);
@@ -200,12 +200,12 @@ struct ClimbContact
     float distance = 0.0f;
 };
 
-//VETOR DE CAIXAS NA CENA VIRTUAL
+// VETOR DE CAIXAS NA CENA VIRTUAL
 std::vector<BoxObject> g_Boxes = {
-    {{0.0f, 0.0f, 10.0f}, {4.0f, 20.0f, 4.0f}},   
-    {{10.0f, 0.0f, 10.0f}, {6.0f, 8.0f, 6.0f}},   
-    {{-12.0f, 0.0f, 5.0f}, {3.0f, 15.0f, 3.0f}},  
-    {{4.0f, 8.0f, 20.0f}, {5.0f, 2.0f, 5.0f}},    
+    {{0.0f, 0.0f, 10.0f}, {4.0f, 20.0f, 4.0f}},
+    {{10.0f, 0.0f, 10.0f}, {6.0f, 8.0f, 6.0f}},
+    {{-12.0f, 0.0f, 5.0f}, {3.0f, 15.0f, 3.0f}},
+    {{4.0f, 8.0f, 20.0f}, {5.0f, 2.0f, 5.0f}},
 };
 
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
@@ -386,11 +386,12 @@ int main(int argc, char *argv[])
     // Construímos uma caixa (cubo) e adicionamos a mesma na cena virtual.
     BuildBoxAndAddToVirtualScene("box");
 
-    //teste temporario 
-    for (const char *n : {"the_peakchar_body", "the_peakchar_head", "the_peakchar_hat"}){
-    SceneObject &o = g_VirtualScene[n];
-    printf("%s: x[%.2f, %.2f] y[%.2f, %.2f] z[%.2f, %.2f]\n", n,
-           o.bbox_min.x, o.bbox_max.x, o.bbox_min.y, o.bbox_max.y, o.bbox_min.z, o.bbox_max.z);
+    // teste temporario
+    for (const char *n : {"the_peakchar_body", "the_peakchar_head", "the_peakchar_hat"})
+    {
+        SceneObject &o = g_VirtualScene[n];
+        printf("%s: x[%.2f, %.2f] y[%.2f, %.2f] z[%.2f, %.2f]\n", n,
+               o.bbox_min.x, o.bbox_max.x, o.bbox_min.y, o.bbox_max.y, o.bbox_min.z, o.bbox_max.z);
     }
 
     if (argc > 1)
@@ -421,7 +422,7 @@ int main(int argc, char *argv[])
 
         player.processaInput(window, g_CameraTheta, deltaT);
         player.atualizarFisica(deltaT);
-        
+
         TryMantleOnTopOfBoxes(player, 0.9f, 4.9f);
 
         bool naCaixa = ResolvePlayerBoxCollisions(player, 0.9f, 4.9f);
@@ -437,7 +438,7 @@ int main(int argc, char *argv[])
         }
         else if (player.posY > player.alturaChao)
         {
-            player.isNoChao = false; // saiu da borda do bloco: cai
+            player.iniciarQueda(); // cai mantendo o momento quando cair da borda do bloco
         }
 
         // 3. CÂMERA
@@ -550,8 +551,7 @@ int main(int argc, char *argv[])
         glUniform1i(g_object_id_uniform, BOX);
         for (const BoxObject &b : g_Boxes)
         {
-            glm::mat4 model_box = Matrix_Translate(b.pos.x, b.pos.y, b.pos.z)
-                                * Matrix_Scale(b.scale.x, b.scale.y, b.scale.z);
+            glm::mat4 model_box = Matrix_Translate(b.pos.x, b.pos.y, b.pos.z) * Matrix_Scale(b.scale.x, b.scale.y, b.scale.z);
             glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(model_box));
             DrawVirtualObject("box");
         }
@@ -1021,19 +1021,19 @@ bool ResolvePlayerBoxCollisions(Player &player, float radius, float height)
 
     for (const BoxObject &b : g_Boxes)
     {
-        //calcula intervalo de posicionamento da caixa
+        // calcula intervalo de posicionamento da caixa
         float minX = b.pos.x - b.scale.x / 2, maxX = b.pos.x + b.scale.x / 2;
-        float minY = b.pos.y,                 maxY = b.pos.y + b.scale.y;
+        float minY = b.pos.y, maxY = b.pos.y + b.scale.y;
         float minZ = b.pos.z - b.scale.z / 2, maxZ = b.pos.z + b.scale.z / 2;
 
-        //calcula intervalo de posicionamento do player
+        // calcula intervalo de posicionamento do player
         float pMinY = player.posY, pMaxY = player.posY + height;
 
-        //se o player tiver acima ou embaixo da caixa , desconsidera a colisão para essa caixa
+        // se o player tiver acima ou embaixo da caixa , desconsidera a colisão para essa caixa
         if (pMaxY <= minY || pMinY >= maxY)
             continue;
 
-        //se o player estiver fora do raio da caixa, desconsidera a colisão para essa caixa
+        // se o player estiver fora do raio da caixa, desconsidera a colisão para essa caixa
         float cx = std::min(std::max(player.posX, minX), maxX);
         float cz = std::min(std::max(player.posZ, minZ), maxZ);
         float dx = player.posX - cx;
@@ -1043,7 +1043,7 @@ bool ResolvePlayerBoxCollisions(Player &player, float radius, float height)
         if (dist >= radius)
             continue;
 
-        //calcula o vetor normal e a profundidade de penetração
+        // calcula o vetor normal e a profundidade de penetração
         float nx, nz, penH;
         if (dist > 1e-5f)
         {
@@ -1058,10 +1058,14 @@ bool ResolvePlayerBoxCollisions(Player &player, float radius, float height)
             float m = std::min(std::min(dl, dr), std::min(db, df));
             nx = 0.0f;
             nz = 0.0f;
-            if      (m == dl) nx = -1.0f;
-            else if (m == dr) nx =  1.0f;
-            else if (m == db) nz = -1.0f;
-            else              nz =  1.0f;
+            if (m == dl)
+                nx = -1.0f;
+            else if (m == dr)
+                nx = 1.0f;
+            else if (m == db)
+                nz = -1.0f;
+            else
+                nz = 1.0f;
             penH = radius + m;
         }
 
@@ -1070,8 +1074,16 @@ bool ResolvePlayerBoxCollisions(Player &player, float radius, float height)
 
         if (penY <= penH)
         {
-            if (toUp < toDown) { player.posY = maxY; landed = true; }
-            else               { player.posY = minY - height; player.velocidadeY = 0.0f; }
+            if (toUp < toDown)
+            {
+                player.posY = maxY;
+                landed = true;
+            }
+            else
+            {
+                player.posY = minY - height;
+                player.velocidadeY = 0.0f;
+            }
         }
         else
         {
@@ -1088,7 +1100,7 @@ static bool ClimbContactWithBox(const BoxObject &b, const Player &p,
                                 ClimbContact &out)
 {
     float minX = b.pos.x - b.scale.x / 2, maxX = b.pos.x + b.scale.x / 2;
-    float minY = b.pos.y,                 maxY = b.pos.y + b.scale.y;
+    float minY = b.pos.y, maxY = b.pos.y + b.scale.y;
     float minZ = b.pos.z - b.scale.z / 2, maxZ = b.pos.z + b.scale.z / 2;
 
     if (p.posY + height <= minY || p.posY >= maxY)
@@ -1115,10 +1127,26 @@ static bool ClimbContactWithBox(const BoxObject &b, const Player &p,
 
         nx = 0.0f;
         nz = 0.0f;
-        if (m == dl)      { nx = -1.0f; cx = minX; }
-        else if (m == dr) { nx = 1.0f;  cx = maxX; }
-        else if (m == db) { nz = -1.0f; cz = minZ; }
-        else              { nz = 1.0f;  cz = maxZ; }
+        if (m == dl)
+        {
+            nx = -1.0f;
+            cx = minX;
+        }
+        else if (m == dr)
+        {
+            nx = 1.0f;
+            cx = maxX;
+        }
+        else if (m == db)
+        {
+            nz = -1.0f;
+            cz = minZ;
+        }
+        else
+        {
+            nz = 1.0f;
+            cz = maxZ;
+        }
         dist = -m;
     }
 
@@ -1171,7 +1199,7 @@ void UpdatePlayerClimbState(Player &player, float radius, float height)
 }
 
 // Função que tenta colocar o jogador no topo de uma caixa, caso ele esteja escalando essa caixa.
-// True se jogador foi colocado no topo , false caso contrário 
+// True se jogador foi colocado no topo , false caso contrário
 bool TryMantleOnTopOfBoxes(Player &player, float radius, float height)
 {
     if (!player.escalando)
@@ -1187,7 +1215,7 @@ bool TryMantleOnTopOfBoxes(Player &player, float radius, float height)
 
         float minX = b.pos.x - b.scale.x / 2, maxX = b.pos.x + b.scale.x / 2;
         float minZ = b.pos.z - b.scale.z / 2, maxZ = b.pos.z + b.scale.z / 2;
-        float top  = b.pos.y + b.scale.y;
+        float top = b.pos.y + b.scale.y;
 
         if (player.posY >= top - mantleMargin)
         {
@@ -1520,7 +1548,12 @@ void CursorPosCallback(GLFWwindow *window, double xpos, double ypos)
 
     static bool first = true;
     static double lastX = 0.0, lastY = 0.0;
-    if (first) { lastX = xpos; lastY = ypos; first = false; }
+    if (first)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        first = false;
+    }
 
     float dx = xpos - lastX;
     float dy = ypos - lastY;
@@ -1528,11 +1561,13 @@ void CursorPosCallback(GLFWwindow *window, double xpos, double ypos)
     lastY = ypos;
 
     g_CameraTheta -= 0.003f * dx;
-    g_CameraPhi   += 0.003f * dy;
+    g_CameraPhi += 0.003f * dy;
 
     float phimax = 3.141592f / 2 - 0.01f;
-    if (g_CameraPhi >  phimax) g_CameraPhi =  phimax;
-    if (g_CameraPhi < -phimax) g_CameraPhi = -phimax;
+    if (g_CameraPhi > phimax)
+        g_CameraPhi = phimax;
+    if (g_CameraPhi < -phimax)
+        g_CameraPhi = -phimax;
 
     if (g_RightMouseButtonPressed)
     {

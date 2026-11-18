@@ -16,6 +16,9 @@ public:
   float velocidadeCorrida;
   float velocidadeY;
 
+  float ultimaVelX;
+  float ultimaVelZ;
+
   float estamina;
   float estaminaMaxima;
 
@@ -49,6 +52,7 @@ public:
         isNoChao(true), tocandoParede(false), escalando(false),
         velocidadeEscalada(5.0f), velocidadeEscaladaLateral(4.0f),
         impulsoX(0.0f), impulsoZ(0.0f),
+        ultimaVelX(0.0f), ultimaVelZ(0.0f),
         paredeNX(0.0f), paredeNZ(1.0f),
         gravidade(GRAVITY), forcaPulo(10.0f),
         alturaChao(0.0f)
@@ -87,8 +91,8 @@ public:
 
     if (escalando)
     {
-        velocidadeY = 0.0f;
-        return; // enquanto escala, a física normal (gravidade) não roda
+      velocidadeY = 0.0f;
+      return; // enquanto escala, a física normal (gravidade) não roda
     }
 
     // Gravidade e movimento vertical
@@ -115,6 +119,16 @@ public:
     }
   }
 
+  void iniciarQueda()
+  {
+    if (isNoChao)
+    {
+      isNoChao = false;
+      impulsoX = ultimaVelX;
+      impulsoZ = ultimaVelZ;
+    }
+  }
+
   void processaInput(GLFWwindow *window, float cameraTheta, float deltaT)
   {
 
@@ -122,51 +136,57 @@ public:
     // segurando o botão esquerdo do mouse.
     if (tocandoParede && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
-        escalando = true;
-        isNoChao = false;
-        impulsoX = 0.0f;
-        impulsoZ = 0.0f;
-        velocidadeY = 0.0f;
+      escalando = true;
+      isNoChao = false;
+      impulsoX = 0.0f;
+      impulsoZ = 0.0f;
+      ultimaVelX = 0.0f;
+      ultimaVelZ = 0.0f;
+      velocidadeY = 0.0f;
 
-        // Eixos locais da superfície. O jogador "olha" para dentro dela
-        // (frente = -normal) e a direita é frente x cima, a mesma convenção
-        // usada na movimentação normal abaixo.
-        float frenteX = -paredeNX;
-        float frenteZ = -paredeNZ;
-        float direitaX = -frenteZ;
-        float direitaZ = frenteX;
+      // Eixos locais da superfície. O jogador "olha" para dentro dela
+      // (frente = -normal) e a direita é frente x cima, a mesma convenção
+      // usada na movimentação normal abaixo.
+      float frenteX = -paredeNX;
+      float frenteZ = -paredeNZ;
+      float direitaX = -frenteZ;
+      float direitaZ = frenteX;
 
-        float lateral = 0.0f;  // + = direita, - = esquerda
-        float vertical = 0.0f; // + = sobe,    - = desce
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) lateral += 1.0f;
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) lateral -= 1.0f;
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) vertical += 1.0f;
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) vertical -= 1.0f;
+      float lateral = 0.0f;  // + = direita, - = esquerda
+      float vertical = 0.0f; // + = sobe,    - = desce
+      if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        lateral += 1.0f;
+      if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        lateral -= 1.0f;
+      if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        vertical += 1.0f;
+      if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        vertical -= 1.0f;
 
-        // Evita andar mais rápido na diagonal
-        float mag = sqrt(lateral * lateral + vertical * vertical);
-        if (mag > 1.0f)
-        {
-            lateral /= mag;
-            vertical /= mag;
-        }
+      // Evita andar mais rápido na diagonal
+      float mag = sqrt(lateral * lateral + vertical * vertical);
+      if (mag > 1.0f)
+      {
+        lateral /= mag;
+        vertical /= mag;
+      }
 
-        // O deslocamento lateral é feito ao longo da tangente da superfície.
-        // Quem "gruda" o jogador de volta na superfície (e troca de face ao
-        // passar de uma quina) é UpdatePlayerClimbState(), no main.cpp.
-        posX += direitaX * lateral * velocidadeEscaladaLateral * deltaT;
-        posZ += direitaZ * lateral * velocidadeEscaladaLateral * deltaT;
-        posY += vertical * velocidadeEscalada * deltaT;
+      // O deslocamento lateral é feito ao longo da tangente da superfície.
+      // Quem "gruda" o jogador de volta na superfície (e troca de face ao
+      // passar de uma quina) é UpdatePlayerClimbState(), no main.cpp.
+      posX += direitaX * lateral * velocidadeEscaladaLateral * deltaT;
+      posZ += direitaZ * lateral * velocidadeEscaladaLateral * deltaT;
+      posY += vertical * velocidadeEscalada * deltaT;
 
-        // Não deixa descer para dentro do chão
-        if (posY < alturaChao)
-            posY = alturaChao;
+      // Não deixa descer para dentro do chão
+      if (posY < alturaChao)
+        posY = alturaChao;
 
-        return; // não executa a movimentação normal enquanto escala
+      return; // não executa a movimentação normal enquanto escala
     }
     else
     {
-        escalando = false;
+      escalando = false;
     }
 
     // Frente = mesma direção horizontal que a câmera olha (ver camera.h)
@@ -179,10 +199,26 @@ public:
     float dirX = 0.0f;
     float dirZ = 0.0f;
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) { dirX += frenteX;  dirZ += frenteZ; }
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) { dirX -= frenteX;  dirZ -= frenteZ; }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) { dirX += direitaX; dirZ += direitaZ; }
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) { dirX -= direitaX; dirZ -= direitaZ; }
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+      dirX += frenteX;
+      dirZ += frenteZ;
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+      dirX -= frenteX;
+      dirZ -= frenteZ;
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+      dirX += direitaX;
+      dirZ += direitaZ;
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+      dirX -= direitaX;
+      dirZ -= direitaZ;
+    }
 
     // Determina a velocidade atual (andando ou correndo)
     float velocidadeAtual = velocidade;
@@ -211,6 +247,16 @@ public:
 
         posX += dirX * velocidadeAtual * deltaT;
         posZ += dirZ * velocidadeAtual * deltaT;
+
+        // Guarda a velocidade horizontal para conservar o momento
+        // caso o jogador caia de uma borda.
+        ultimaVelX = dirX * velocidadeAtual;
+        ultimaVelZ = dirZ * velocidadeAtual;
+      }
+      else
+      {
+        ultimaVelX = 0.0f;
+        ultimaVelZ = 0.0f;
       }
     }
   }
