@@ -615,18 +615,22 @@ int main(int argc, char *argv[])
 
             const float ANGULO_MAO = 1.5708f; // +90°
 
-            // Mão do arquivo
+            // Fator de escala para ajustar o tamanho das mãos (valores menores que 1.0 diminuem o tamanho)
+            float escalaMao = 0.7f;
+
+            // Mão direita
             glm::mat4 maoD = base *
                              Matrix_Translate(-0.6f, -0.5f + anim, 1.0f) *
                              Matrix_Rotate_Y(ANGULO_MAO) *
+                             Matrix_Scale(escalaMao, escalaMao, escalaMao) *
                              centraliza;
             glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(maoD));
             DrawVirtualObject("BODY.004");
 
-            // Mão espelhada em X
+            // Mão esquerda (combina o espelhamento em X com a redução de escala)
             glm::mat4 maoE = base *
                              Matrix_Translate(0.6f, -0.5f - anim, 1.0f) *
-                             Matrix_Scale(-1.0f, 1.0f, 1.0f) *
+                             Matrix_Scale(-escalaMao, escalaMao, escalaMao) *
                              Matrix_Rotate_Y(ANGULO_MAO) *
                              centraliza;
             glUniformMatrix4fv(g_model_uniform, 1, GL_FALSE, glm::value_ptr(maoE));
